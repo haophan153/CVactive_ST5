@@ -1,0 +1,348 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use App\Models\Cv;
+use App\Models\CvSection;
+use App\Models\CvSectionItem;
+use App\Models\Template;
+
+class CvController extends Controller
+{
+    /**
+     * Dashboard: danh sách CV của user
+     */
+    public function index()
+    {
+        $cvs = auth()->user()->cvs()->with('template')->latest()->get();
+        return view('dashboard', compact('cvs'));
+    }
+
+    /**
+     * Chuyển hướng sang trang chọn template
+     */
+    public function create()
+    {
+        return redirect()->route('templates.index');
+    }
+
+    /**
+     * Tạo CV mới từ template đã chọn
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'template_id' => 'required|exists:templates,id',
+        ]);
+
+        $user     = auth()->user();
+        $plan     = $user->plan;
+        $cvLimit  = $plan ? $plan->cv_limit : 2;
+        $cvCount  = $user->cvs()->count();
+
+        if ($cvCount >= $cvLimit) {
+            return back()->with('error', "Bạn đã đạt giới hạn {$cvLimit} CV của gói hiện tại. Vui lòng nâng cấp để tạo thêm.");
+        }
+
+        $template = Template::findOrFail($request->template_id);
+
+        // Tăng usage count
+        $template->increment('usage_count');
+
+        $cv = Cv::create([
+            'user_id'     => $user->id,
+            'template_id' => $template->id,
+            'title'       => 'CV của ' . $user->name,
+            'slug'        => Str::slug($user->name) . '-' . Str::random(6),
+            'personal_info' => [
+                'full_name'  => $user->name,
+                'email'      => $user->email,
+                'phone'      => '',
+                'address'    => '',
+                'website'    => '',
+                'linkedin'   => '',
+                'github'     => '',
+                'avatar'     => $user->avatar ?? '',
+            ],
+            'objective'   => '',
+            'theme_color' => '#4F46E5',
+            'font_family' => 'Inter',
+            'visibility'  => 'private',
+            'is_draft'    => true,
+        ]);
+
+        // Tạo các section mặc định
+        $defaultSections = [
+            ['type' => 'personal',       'title' => 'Thông tin cá nhân',      'sort_order' => 0],
+            ['type' => 'objective',      'title' => 'Mục tiêu nghề nghiệp',   'sort_order' => 1],
+            ['type' => 'experience',     'title' => 'Kinh nghiệm làm việc',   'sort_order' => 2],
+            ['type' => 'education',      'title' => 'Học vấn',                'sort_order' => 3],
+            ['type' => 'skills',         'title' => 'Kỹ năng',                'sort_order' => 4],
+            ['type' => 'certifications', 'title' => 'Chứng chỉ',             'sort_order' => 5],
+            ['type' => 'projects',       'title' => 'Dự án',                  'sort_order' => 6],
+            ['type' => 'activities',     'title' => 'Hoạt động',              'sort_order' => 7],
+            ['type' => 'references',     'title' => 'Người tham chiếu',       'sort_order' => 8],
+        ];
+
+        foreach ($defaultSections as $section) {
+            CvSection::create(array_merge($section, [
+                'cv_id'      => $cv->id,
+                'is_visible' => true,
+                'is_custom'  => false,
+            ]));
+        }
+
+        return redirect()->route('cv.edit', $cv)->with('success', 'CV đã được tạo! Hãy bắt đầu chỉnh sửa.');
+    }
+
+    /**
+     * Mở CV editor
+     */
+    public function edit(Cv $cv)
+    {
+        $this->authorize('update', $cv);
+
+        $cv->load(['template', 'sections.items']);
+        $templates = Template::where('is_active', true)->get();
+
+        return view('cv.editor', compact('cv', 'templates'));
+    }
+
+    /**
+     * Lưu toàn bộ CV (AJAX + form)
+     */
+    public function update(Request $request, Cv $cv)
+    {
+        $this->authorize('update', $cv);
+
+        $request->validate([
+            'title'       => 'required|string|max:255',
+            'theme_color' => 'nullable|string|max:20',
+            'font_family' => 'nullable|string|max:50',
+            'visibility'  => 'nullable|in:public,private',
+            'objective'   => 'nullable|string',
+            'personal_info' => 'nullable|array',
+        ]);
+
+        $cv->update([
+            'title'        => $request->title,
+            'theme_color'  => $request->theme_color ?? $cv->theme_color,
+            'font_family'  => $request->font_family ?? $cv->font_family,
+            'visibility'   => $request->visibility ?? $cv->visibility,
+            'objective'    => $request->objective,
+            'personal_info' => $request->personal_info ?? $cv->personal_info,
+            'is_draft'     => $request->boolean('is_draft', $cv->is_draft),
+            'last_saved_at' => now(),
+        ]);
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'message' => 'Đã lưu!', 'saved_at' => now()->format('H:i:s')]);
+        }
+
+        return back()->with('success', 'CV đã được lưu!');
+    }
+
+    /**
+     * Xoá CV
+     */
+    public function destroy(Cv $cv)
+    {
+        $this->authorize('delete', $cv);
+        $cv->delete();
+
+        if (request()->expectsJson()) {
+            return response()->json(['success' => true]);
+        }
+
+        return redirect()->route('dashboard')->with('success', 'CV đã được xoá.');
+    }
+
+    // ─── Section management ────────────────────────────────────────────────
+
+    /**
+     * Lưu toàn bộ sections + items (AJAX auto-save)
+     */
+    public function saveSections(Request $request, Cv $cv)
+    {
+        $this->authorize('update', $cv);
+
+        $sections = $request->input('sections', []);
+
+        foreach ($sections as $sectionData) {
+            $section = CvSection::find($sectionData['id'] ?? null);
+
+            if (!$section || $section->cv_id !== $cv->id) {
+                continue;
+            }
+
+            $section->update([
+                'title'      => $sectionData['title'] ?? $section->title,
+                'sort_order' => $sectionData['sort_order'] ?? $section->sort_order,
+                'is_visible' => $sectionData['is_visible'] ?? $section->is_visible,
+            ]);
+
+            // Xử lý items
+            if (isset($sectionData['items'])) {
+                $keptIds = [];
+
+                foreach ($sectionData['items'] as $itemData) {
+                    if (!empty($itemData['id'])) {
+                        $item = CvSectionItem::where('id', $itemData['id'])
+                            ->where('cv_section_id', $section->id)
+                            ->first();
+
+                        if ($item) {
+                            $item->update([
+                                'content'    => $itemData['content'],
+                                'sort_order' => $itemData['sort_order'] ?? 0,
+                            ]);
+                            $keptIds[] = $item->id;
+                        }
+                    } else {
+                        $item = CvSectionItem::create([
+                            'cv_section_id' => $section->id,
+                            'content'       => $itemData['content'],
+                            'sort_order'    => $itemData['sort_order'] ?? 0,
+                        ]);
+                        $keptIds[] = $item->id;
+                    }
+                }
+
+                // Xoá items không còn tồn tại
+                $section->items()->whereNotIn('id', $keptIds)->delete();
+            }
+        }
+
+        $cv->update(['last_saved_at' => now()]);
+
+        return response()->json(['success' => true, 'saved_at' => now()->format('H:i:s')]);
+    }
+
+    /**
+     * Thêm section tùy chỉnh
+     */
+    public function addSection(Request $request, Cv $cv)
+    {
+        $this->authorize('update', $cv);
+
+        $request->validate(['title' => 'required|string|max:100']);
+
+        $maxOrder = $cv->sections()->max('sort_order') ?? -1;
+
+        $section = CvSection::create([
+            'cv_id'      => $cv->id,
+            'type'       => 'custom',
+            'title'      => $request->title,
+            'sort_order' => $maxOrder + 1,
+            'is_visible' => true,
+            'is_custom'  => true,
+        ]);
+
+        return response()->json(['success' => true, 'section' => $section]);
+    }
+
+    /**
+     * Xoá section
+     */
+    public function deleteSection(Cv $cv, CvSection $section)
+    {
+        $this->authorize('update', $cv);
+
+        if ($section->cv_id !== $cv->id) {
+            abort(403);
+        }
+
+        $section->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Xem CV public qua share token
+     */
+    public function share(string $token)
+    {
+        $share = \App\Models\CvShare::where('share_token', $token)
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->firstOrFail();
+
+        $share->increment('view_count');
+        $cv = $share->cv->load(['template', 'sections.items']);
+
+        return view('cv.public', compact('cv'));
+    }
+
+    /**
+     * Tạo / lấy share link
+     */
+    public function getShareLink(Cv $cv)
+    {
+        $this->authorize('update', $cv);
+
+        $share = $cv->shares()->first();
+
+        if (!$share) {
+            $share = \App\Models\CvShare::create([
+                'cv_id'       => $cv->id,
+                'share_token' => Str::random(32),
+            ]);
+        }
+
+        $url = route('cv.public', $share->share_token);
+
+        return response()->json(['success' => true, 'url' => $url]);
+    }
+
+    /**
+     * Đổi template của CV (AJAX)
+     */
+    public function changeTemplate(Request $request, Cv $cv)
+    {
+        $this->authorize('update', $cv);
+
+        $request->validate([
+            'template_id' => 'required|exists:templates,id',
+        ]);
+
+        $template = Template::findOrFail($request->template_id);
+        $template->increment('usage_count');
+
+        $cv->update(['template_id' => $request->template_id]);
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Xuất CV ra PDF
+     */
+    public function exportPdf(Cv $cv)
+    {
+        $this->authorize('view', $cv);
+
+        $cv->load(['template', 'sections.items']);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('cv.pdf', compact('cv'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->download(Str::slug($cv->title) . '.pdf');
+    }
+
+    /**
+     * Xuất CV ra PNG (server-side via Browsershot or redirect to client)
+     */
+    public function exportPng(Cv $cv)
+    {
+        $this->authorize('view', $cv);
+        $cv->load(['template', 'sections.items']);
+
+        // Render the CV HTML
+        $html = view('cv.pdf', compact('cv'))->render();
+
+        // Return the rendered HTML page with html2canvas auto-download trigger
+        return view('cv.png-export', compact('cv', 'html'));
+    }
+}
