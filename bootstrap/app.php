@@ -11,7 +11,15 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->alias([
+            'admin' => \App\Http\Middleware\AdminMiddleware::class,
+        ]);
+
+        // Bỏ CSRF cho IPN callbacks từ cổng thanh toán
+        $middleware->validateCsrfTokens(except: [
+            'payment/vnpay/ipn',
+            'payment/momo/ipn',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

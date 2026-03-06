@@ -21,6 +21,11 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'avatar',
+        'google_id',
+        'role',
+        'plan_id',
+        'plan_expires_at',
     ];
 
     /**
@@ -43,6 +48,39 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'plan_expires_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Get the plan associated with the user.
+     */
+    public function plan()
+    {
+        return $this->belongsTo(Plan::class);
+    }
+
+    /**
+     * Get the CVs created by the user.
+     */
+    public function cvs()
+    {
+        return $this->hasMany(Cv::class);
+    }
+
+    /**
+     * Get the payments made by the user.
+     */
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * Get the blog posts authored by the user.
+     */
+    public function blogPosts()
+    {
+        return $this->hasMany(BlogPost::class , 'author_id');
     }
 }
