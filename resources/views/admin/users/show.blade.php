@@ -19,7 +19,16 @@
             <h2 class="text-lg font-bold text-gray-900">{{ $user->name }}</h2>
             <p class="text-sm text-gray-500">{{ $user->email }}</p>
             <div class="flex justify-center gap-2 mt-3">
-                <span class="px-2.5 py-1 text-xs font-medium rounded-full {{ $user->role === 'admin' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700' }}">{{ $user->role }}</span>
+                @switch($user->role)
+                    @case('admin')
+                        <span class="px-2.5 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700">Admin</span>
+                        @break
+                    @case('hr')
+                        <span class="px-2.5 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-700">HR</span>
+                        @break
+                    @default
+                        <span class="px-2.5 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">User</span>
+                @endswitch
                 @if($user->plan)
                 <span class="px-2.5 py-1 text-xs font-medium rounded-full bg-indigo-100 text-indigo-700">{{ $user->plan->name }}</span>
                 @endif

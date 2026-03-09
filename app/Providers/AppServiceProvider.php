@@ -19,6 +19,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Pagination style
+        \Illuminate\Pagination\Paginator::useTailwind();
     }
 }

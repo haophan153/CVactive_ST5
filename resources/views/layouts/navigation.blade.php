@@ -5,7 +5,7 @@
             <div class="flex">
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center">
-                    <a href="{{ route('dashboard') }}" class="flex items-center space-x-2">
+                    <a href="{{ route('home') }}" class="flex items-center space-x-2">
                         <div class="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center">
                             <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                         </div>
@@ -24,9 +24,17 @@
                     <x-nav-link :href="route('pricing')" :active="request()->routeIs('pricing')">
                         Bảng giá
                     </x-nav-link>
+                    <x-nav-link :href="route('jobs.index')" :active="request()->routeIs('jobs.*')">
+                        Việc làm
+                    </x-nav-link>
                     @if(auth()->user()?->role === 'admin')
                     <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.*')">
                         Admin
+                    </x-nav-link>
+                    @endif
+                    @if(auth()->user()?->role === 'hr' || auth()->user()?->role === 'admin')
+                    <x-nav-link :href="route('hr.job-posts.index')" :active="request()->routeIs('hr.job-posts.*') || request()->routeIs('hr.applications.*')">
+                        Quản lý tuyển dụng
                     </x-nav-link>
                     @endif
                 </div>
@@ -66,6 +74,9 @@
                         </x-dropdown-link>
                         <x-dropdown-link :href="route('payment.history')">
                             Lịch sử thanh toán
+                        </x-dropdown-link>
+                        <x-dropdown-link :href="route('my-applications.index')">
+                            Hồ sơ ứng tuyển
                         </x-dropdown-link>
 
                         <!-- Authentication -->
@@ -107,6 +118,7 @@
 
         <!-- Responsive Settings Options -->
         <div class="pt-4 pb-1 border-t border-gray-200">
+            @auth
             <div class="px-4">
                 <div class="font-medium text-base text-gray-800">{{ Auth::user()->name }}</div>
                 <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
@@ -128,6 +140,7 @@
                     </x-responsive-nav-link>
                 </form>
             </div>
+            @endauth
         </div>
     </div>
 </nav>

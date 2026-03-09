@@ -3,9 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>{{ $cv->title }}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: DejaVu Sans, sans-serif; font-size: 12px; color: #1f2937; }
+        body { 
+            font-family: 'DejaVu Sans', sans-serif; 
+            font-size: 12px; 
+            color: #1f2937;
+        }
         .cv-document { width: 100%; }
     </style>
 </head>

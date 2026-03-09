@@ -17,6 +17,7 @@
             <select name="role" class="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
                 <option value="">Tất cả</option>
                 <option value="user" {{ request('role') === 'user' ? 'selected' : '' }}>User</option>
+                <option value="hr" {{ request('role') === 'hr' ? 'selected' : '' }}>HR</option>
                 <option value="admin" {{ request('role') === 'admin' ? 'selected' : '' }}>Admin</option>
             </select>
         </div>
@@ -85,9 +86,16 @@
                         @endif
                     </td>
                     <td class="px-4 py-3">
-                        <span class="px-2.5 py-1 text-xs font-medium rounded-full {{ $user->role === 'admin' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700' }}">
-                            {{ $user->role }}
-                        </span>
+                        @switch($user->role)
+                            @case('admin')
+                                <span class="px-2.5 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700">Admin</span>
+                                @break
+                            @case('hr')
+                                <span class="px-2.5 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-700">HR</span>
+                                @break
+                            @default
+                                <span class="px-2.5 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">User</span>
+                        @endswitch
                     </td>
                     <td class="px-4 py-3 text-gray-500 text-xs">{{ $user->created_at->format('d/m/Y') }}</td>
                     <td class="px-5 py-3 text-right">

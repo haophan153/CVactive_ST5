@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
+            'hr' => \App\Http\Middleware\HRMiddleware::class,
         ]);
 
         // Bỏ CSRF cho IPN callbacks từ cổng thanh toán

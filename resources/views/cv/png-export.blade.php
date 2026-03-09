@@ -39,8 +39,8 @@
             <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
             Tải xuống PNG
         </button>
-        <a id="back-btn" href="{{ route('cv.edit', $cv) }}">
-            ← Quay lại chỉnh sửa
+        <a id="back-btn" href="{{ isset($share) ? route('cv.public', $share->share_token) : route('cv.edit', $cv) }}">
+            ← {{ isset($share) ? 'Quay lại xem CV' : 'Quay lại chỉnh sửa' }}
         </a>
     </div>
 
@@ -86,7 +86,7 @@
                 document.getElementById('status').innerHTML = `
                     <h2 style="color:#ef4444;">Xuất thất bại</h2>
                     <p style="color:#64748b;">${err.message}</p>
-                    <a href="{{ route('cv.edit', $cv) }}" style="display:inline-block;margin-top:12px;padding:10px 20px;background:#6366f1;color:white;border-radius:8px;text-decoration:none;">← Quay lại</a>
+                    <a href="{{ isset($share) ? route('cv.public', $share->share_token) : route('cv.edit', $cv) }}" style="display:inline-block;margin-top:12px;padding:10px 20px;background:#6366f1;color:white;border-radius:8px;text-decoration:none;">← Quay lại</a>
                 `;
             }
         });

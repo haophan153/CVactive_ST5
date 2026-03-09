@@ -16,9 +16,9 @@
             <!-- Categories Filter Placeholder -->
             @if($categories->count() > 0)
             <div class="flex justify-center space-x-4 mb-8 overflow-x-auto pb-2">
-                <a href="{{ route('templates.index') }}" class="px-4 py-2 rounded-full border border-indigo-600 bg-indigo-50 text-indigo-700 font-medium whitespace-nowrap">All templates</a>
+                <a href="{{ route('templates.index') }}" class="px-4 py-2 rounded-full border font-medium whitespace-nowrap {{ request('category') ? 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' : 'border-indigo-600 bg-indigo-50 text-indigo-700' }}">Tất cả</a>
                 @foreach($categories as $category)
-                    <a href="#" class="px-4 py-2 rounded-full border border-gray-300 bg-white text-gray-700 font-medium hover:bg-gray-50 whitespace-nowrap">{{ $category->name }}</a>
+                    <a href="{{ route('templates.index', ['category' => $category->slug]) }}" class="px-4 py-2 rounded-full border font-medium whitespace-nowrap {{ request('category') === $category->slug ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}">{{ $category->name }}</a>
                 @endforeach
             </div>
             @endif
@@ -64,8 +64,8 @@
                                             Use Template
                                         </button>
                                     </form>
-                                    <a href="#" class="bg-white/10 hover:bg-white/20 border border-white/50 text-white backdrop-blur-sm w-full max-w-[180px] font-semibold py-2 px-4 rounded-lg transform transition active:scale-95 text-center">
-                                        Preview
+                                    <a href="{{ route('templates.preview', $template) }}" target="_blank" class="bg-white/10 hover:bg-white/20 border border-white/50 text-white backdrop-blur-sm w-full max-w-[180px] font-semibold py-2 px-4 rounded-lg transform transition active:scale-95 text-center">
+                                        Xem trước
                                     </a>
                                 </div>
                             </div>

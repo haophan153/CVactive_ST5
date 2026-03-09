@@ -16,7 +16,12 @@ class CvController extends Controller
      */
     public function index()
     {
-        $cvs = auth()->user()->cvs()->with('template')->latest()->get();
+        $cvs = auth()->user()->cvs()->with(['template', 'shares'])->latest()->get();
+        $cvs->each(function ($cv) {
+            $cv->share_url = $cv->shares->isNotEmpty()
+                ? route('cv.public', $cv->shares->first()->share_token)
+                : null;
+        });
         return view('dashboard', compact('cvs'));
     }
 
@@ -107,7 +112,26 @@ class CvController extends Controller
         $cv->load(['template', 'sections.items']);
         $templates = Template::where('is_active', true)->get();
 
-        return view('cv.editor', compact('cv', 'templates'));
+        // Chuẩn bị dữ liệu sections dạng JSON để tránh lỗi Blade compiler
+        $sectionsJson = $cv->sections->map(function($s) {
+            return [
+                'id' => $s->id,
+                'type' => $s->type,
+                'title' => $s->title,
+                'sort_order' => $s->sort_order,
+                'is_visible' => $s->is_visible,
+                'is_custom' => $s->is_custom,
+                'items' => $s->items->map(function($i) {
+                    return [
+                        'id' => $i->id,
+                        'content' => $i->content,
+                        'sort_order' => $i->sort_order,
+                    ];
+                })->values(),
+            ];
+        })->values();
+
+        return view('cv.editor', compact('cv', 'templates', 'sectionsJson'));
     }
 
     /**
@@ -273,7 +297,46 @@ class CvController extends Controller
         $share->increment('view_count');
         $cv = $share->cv->load(['template', 'sections.items']);
 
-        return view('cv.public', compact('cv'));
+        return view('cv.public', compact('cv', 'share'));
+    }
+
+    /**
+     * Xuất PDF qua share token (không cần đăng nhập)
+     */
+    public function exportPdfByShareToken(string $token)
+    {
+        $share = \App\Models\CvShare::where('share_token', $token)
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->firstOrFail();
+
+        $cv = $share->cv->load(['template', 'sections.items']);
+
+        // Render the CV HTML
+        $html = view('cv.pdf', compact('cv'))->render();
+
+        // Use dompdf instead of mPDF
+        $pdf = \PDF::loadHTML($html);
+        
+        // Output to browser
+        return $pdf->download(Str::slug($cv->title) . '.pdf');
+    }
+
+    /**
+     * Xuất PNG qua share token (không cần đăng nhập)
+     */
+    public function exportPngByShareToken(string $token)
+    {
+        $share = \App\Models\CvShare::where('share_token', $token)
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->firstOrFail();
+
+        $cv = $share->cv->load(['template', 'sections.items']);
+
+        return view('cv.png-export', compact('cv', 'share'));
     }
 
     /**
@@ -317,6 +380,77 @@ class CvController extends Controller
     }
 
     /**
+     * Upload avatar cho CV (AJAX)
+     */
+    public function uploadAvatar(Request $request, Cv $cv)
+    {
+        $this->authorize('update', $cv);
+
+        $request->validate([
+            'avatar' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+        ]);
+
+        // Xóa avatar cũ nếu có
+        if (!empty($cv->personal_info['avatar'])) {
+            $oldAvatar = public_path('storage/' . $cv->personal_info['avatar']);
+            if (file_exists($oldAvatar)) {
+                unlink($oldAvatar);
+            }
+        }
+
+        // Lưu avatar mới
+        $path = $request->file('avatar')->store('avatars', 'public');
+
+        // Cập nhật personal_info
+        $personalInfo = $cv->personal_info ?? [];
+        $personalInfo['avatar'] = $path;
+        $cv->update(['personal_info' => $personalInfo]);
+
+        return response()->json([
+            'success' => true,
+            'avatar_url' => asset('storage/' . $path),
+        ]);
+    }
+
+    /**
+     * Xóa avatar của CV (AJAX)
+     */
+    public function deleteAvatar(Cv $cv)
+    {
+        $this->authorize('update', $cv);
+
+        if (!empty($cv->personal_info['avatar'])) {
+            $avatarPath = public_path('storage/' . $cv->personal_info['avatar']);
+            if (file_exists($avatarPath)) {
+                unlink($avatarPath);
+            }
+
+            $personalInfo = $cv->personal_info ?? [];
+            $personalInfo['avatar'] = '';
+            $cv->update(['personal_info' => $personalInfo]);
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Lấy preview HTML (AJAX)
+     */
+    public function getPreview(Cv $cv)
+    {
+        $this->authorize('view', $cv);
+
+        $cv->load(['template', 'sections.items']);
+
+        $html = view($cv->template->blade_view ?? 'cv-templates.classic-blue', [
+            'cv' => $cv,
+            'preview' => true,
+        ])->render();
+
+        return response()->json(['success' => true, 'html' => $html]);
+    }
+
+    /**
      * Xuất CV ra PDF
      */
     public function exportPdf(Cv $cv)
@@ -325,9 +459,13 @@ class CvController extends Controller
 
         $cv->load(['template', 'sections.items']);
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('cv.pdf', compact('cv'))
-            ->setPaper('a4', 'portrait');
+        // Render the CV HTML
+        $html = view('cv.pdf', compact('cv'))->render();
 
+        // Use dompdf instead of mPDF
+        $pdf = \PDF::loadHTML($html);
+        
+        // Output to browser
         return $pdf->download(Str::slug($cv->title) . '.pdf');
     }
 
