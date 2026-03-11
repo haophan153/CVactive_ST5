@@ -83,4 +83,20 @@ class User extends Authenticatable
     {
         return $this->hasMany(BlogPost::class , 'author_id');
     }
+
+    /**
+     * Get the job posts created by the user.
+     */
+    public function jobPosts()
+    {
+        return $this->hasMany(JobPost::class);
+    }
+
+    /**
+     * Check if user is HR.
+     */
+    public function isHR()
+    {
+        return $this->role === 'hr';
+    }
 }

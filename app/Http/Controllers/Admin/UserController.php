@@ -55,7 +55,7 @@ class UserController extends Controller
         $request->validate([
             'name'    => 'required|string|max:255',
             'email'   => 'required|email|unique:users,email,' . $user->id,
-            'role'    => 'required|in:user,admin',
+            'role'    => 'required|in:user,admin,hr',
             'plan_id' => 'nullable|exists:plans,id',
             'plan_expires_at' => 'nullable|date',
         ]);

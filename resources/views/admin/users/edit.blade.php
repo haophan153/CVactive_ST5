@@ -29,6 +29,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Vai trò</label>
                     <select name="role" class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-indigo-500 focus:border-indigo-500">
                         <option value="user" {{ old('role', $user->role) === 'user' ? 'selected' : '' }}>User</option>
+                        <option value="hr" {{ old('role', $user->role) === 'hr' ? 'selected' : '' }}>HR</option>
                         <option value="admin" {{ old('role', $user->role) === 'admin' ? 'selected' : '' }}>Admin</option>
                     </select>
                 </div>

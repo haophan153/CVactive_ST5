@@ -7,7 +7,7 @@
     <title>Chỉnh sửa CV – {{ $cv->title }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&family=Open+Sans:wght@300;400;600;700&family=Lato:wght@300;400;700&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&family=Open+Sans:wght@300;400;600;700&family=Lato:wght@300;400;700&family=Montserrat:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&family=Quicksand:wght@300;400;500;600;700&family=Nunito:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Georgia&family=Arial&family=Roboto+Slab:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <style>
@@ -103,16 +103,15 @@
 
                         <span class="text-sm flex-1 truncate" :class="activeSection === section.id ? 'text-indigo-700 font-medium' : 'text-gray-700'" x-text="section.title"></span>
 
+                        {{-- Visibility Toggle Button - Always visible when section is active --}}
                         <button @click.stop="toggleSection(section)"
-                            :class="section.is_visible ? 'text-gray-400 hover:text-gray-600' : 'text-gray-200 hover:text-gray-400'"
-                            class="opacity-0 group-hover:opacity-100 p-0.5 transition">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <template x-if="section.is_visible">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                </template>
-                                <template x-if="!section.is_visible">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
-                                </template>
+                            :class="section.is_visible ? 'text-gray-400 hover:text-indigo-600 bg-gray-50 hover:bg-indigo-50' : 'text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100'"
+                            class="p-1 rounded transition flex items-center" :title="section.is_visible ? 'Ẩn mục này' : 'Hiện mục này'">
+                            <svg x-show="section.is_visible" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            <svg x-show="!section.is_visible" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
                             </svg>
                         </button>
                     </div>
@@ -167,11 +166,19 @@
                 <label class="block text-xs font-semibold text-gray-600 uppercase mb-2">Font chữ</label>
                 <select x-model="cvFontFamily" @change="autoSave()"
                     class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-                    <option value="Inter">Inter (Mặc định)</option>
-                    <option value="Roboto">Roboto</option>
-                    <option value="Open Sans">Open Sans</option>
-                    <option value="Lato">Lato</option>
-                    <option value="Montserrat">Montserrat</option>
+                    <option value="Inter">Inter (Hiện đại)</option>
+                    <option value="Roboto">Roboto (Phổ biến)</option>
+                    <option value="Open Sans">Open Sans (Sạch sẽ)</option>
+                    <option value="Lato">Lato (Thân thiện)</option>
+                    <option value="Montserrat">Montserrat (Sang trọng)</option>
+                    <option value="Poppins">Poppins (Năng động)</option>
+                    <option value="Nunito">Nunito (Mềm mại)</option>
+                    <option value="Quicksand">Quicksand (Trẻ trung)</option>
+                    <option value="Playfair Display">Playfair Display (Cổ điển)</option>
+                    <option value="Cormorant Garamond">Cormorant Garamond (Tinh tế)</option>
+                    <option value="Georgia">Georgia (Truyền thống)</option>
+                    <option value="Arial">Arial (Đơn giản)</option>
+                    <option value="Roboto Slab">Roboto Slab (Kỹ thuật)</option>
                 </select>
             </div>
 
@@ -221,7 +228,7 @@
     <main class="flex-1 ml-72 mr-[45%] min-h-screen pt-4 pb-16 overflow-y-auto px-6">
 
         <template x-for="section in sections" :key="section.id">
-            <div x-show="activeSection === section.id || !activeSection"
+            <div x-show="section.is_visible && (activeSection === section.id || !activeSection)"
                 class="bg-white rounded-xl shadow-sm border border-gray-100 mb-4 overflow-hidden">
 
                 {{-- Section header --}}
@@ -247,43 +254,88 @@
                 {{-- Section body --}}
                 <div class="p-5" :class="!section.is_visible ? 'opacity-50' : ''">
 
+                    {{-- Hidden notice --}}
+                    <div x-show="!section.is_visible" class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between">
+                        <div class="flex items-center space-x-2 text-amber-700">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span class="text-sm font-medium">Mục này đang bị ẩn trong CV</span>
+                        </div>
+                        <button @click="toggleSection(section)" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+                            Bật hiển thị
+                        </button>
+                    </div>
+
                     {{-- Personal Info --}}
                     <template x-if="section.type === 'personal'">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="col-span-2">
-                                <label class="form-label">Họ và tên</label>
-                                <input type="text" x-model="personal.full_name" @input="debouncedSave()"
-                                    class="form-input" placeholder="Nguyễn Văn A">
+                        <div class="space-y-4">
+                            {{-- Avatar Upload --}}
+                            <div class="flex items-center space-x-4">
+                                <div class="relative">
+                                    <div class="w-24 h-24 rounded-full overflow-hidden border-2 border-gray-300 bg-gray-100 flex items-center justify-center">
+                                        <img x-show="personal.avatar" :src="personal.avatar.startsWith('http') ? personal.avatar : `/storage/${personal.avatar}`"
+                                            class="w-full h-full object-cover">
+                                        <svg x-show="!personal.avatar" class="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                        </svg>
+                                    </div>
+                                    <label for="avatar-upload" class="absolute bottom-0 right-0 bg-indigo-600 text-white p-1.5 rounded-full cursor-pointer hover:bg-indigo-700 transition shadow-md">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        </svg>
+                                        <input type="file" id="avatar-upload" accept="image/*" class="hidden" @change="uploadAvatar($event)">
+                                    </label>
+                                    <button x-show="personal.avatar" @click="removeAvatar()"
+                                        class="absolute top-0 right-0 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition shadow-md">
+                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="text-sm text-gray-500">
+                                    <p class="font-medium">Ảnh đại diện</p>
+                                    <p class="text-xs">JPG, PNG. Max 2MB</p>
+                                </div>
                             </div>
-                            <div>
-                                <label class="form-label">Email</label>
-                                <input type="email" x-model="personal.email" @input="debouncedSave()"
-                                    class="form-input" placeholder="email@example.com">
-                            </div>
-                            <div>
-                                <label class="form-label">Số điện thoại</label>
-                                <input type="text" x-model="personal.phone" @input="debouncedSave()"
-                                    class="form-input" placeholder="0901 234 567">
-                            </div>
-                            <div>
-                                <label class="form-label">Địa chỉ</label>
-                                <input type="text" x-model="personal.address" @input="debouncedSave()"
-                                    class="form-input" placeholder="Hà Nội, Việt Nam">
-                            </div>
-                            <div>
-                                <label class="form-label">Website</label>
-                                <input type="text" x-model="personal.website" @input="debouncedSave()"
-                                    class="form-input" placeholder="https://...">
-                            </div>
-                            <div>
-                                <label class="form-label">LinkedIn</label>
-                                <input type="text" x-model="personal.linkedin" @input="debouncedSave()"
-                                    class="form-input" placeholder="linkedin.com/in/...">
-                            </div>
-                            <div>
-                                <label class="form-label">GitHub</label>
-                                <input type="text" x-model="personal.github" @input="debouncedSave()"
-                                    class="form-input" placeholder="github.com/...">
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="col-span-2">
+                                    <label class="form-label">Họ và tên</label>
+                                    <input type="text" x-model="personal.full_name" @input="debouncedSave()"
+                                        class="form-input" placeholder="Nguyễn Văn A">
+                                </div>
+                                <div>
+                                    <label class="form-label">Email</label>
+                                    <input type="email" x-model="personal.email" @input="debouncedSave()"
+                                        class="form-input" placeholder="email@example.com">
+                                </div>
+                                <div>
+                                    <label class="form-label">Số điện thoại</label>
+                                    <input type="text" x-model="personal.phone" @input="debouncedSave()"
+                                        class="form-input" placeholder="0901 234 567">
+                                </div>
+                                <div>
+                                    <label class="form-label">Địa chỉ</label>
+                                    <input type="text" x-model="personal.address" @input="debouncedSave()"
+                                        class="form-input" placeholder="Hà Nội, Việt Nam">
+                                </div>
+                                <div>
+                                    <label class="form-label">Website</label>
+                                    <input type="text" x-model="personal.website" @input="debouncedSave()"
+                                        class="form-input" placeholder="https://...">
+                                </div>
+                                <div>
+                                    <label class="form-label">LinkedIn</label>
+                                    <input type="text" x-model="personal.linkedin" @input="debouncedSave()"
+                                        class="form-input" placeholder="linkedin.com/in/...">
+                                </div>
+                                <div>
+                                    <label class="form-label">GitHub</label>
+                                    <input type="text" x-model="personal.github" @input="debouncedSave()"
+                                        class="form-input" placeholder="github.com/...">
+                                </div>
                             </div>
                         </div>
                     </template>
@@ -407,13 +459,21 @@
                                         <input type="text" x-model="item.content.name" @input="debouncedSave()"
                                             class="form-input flex-1" placeholder="Tên kỹ năng (VD: JavaScript)">
                                         <select x-model="item.content.level" @change="debouncedSave()"
-                                            class="form-input w-36">
+                                            class="form-input w-32">
                                             <option value="">-- Mức độ --</option>
                                             <option value="beginner">Cơ bản</option>
                                             <option value="intermediate">Trung bình</option>
                                             <option value="advanced">Nâng cao</option>
                                             <option value="expert">Chuyên gia</option>
                                         </select>
+                                        {{-- Skill Level Visual Indicator --}}
+                                        <div class="flex items-center space-x-1 w-24">
+                                            <template x-for="i in 4" :key="i">
+                                                <div class="h-2 flex-1 rounded-full transition-colors"
+                                                    :class="getSkillLevelClass(item.content.level, i)"
+                                                    style="max-width: 20px;"></div>
+                                            </template>
+                                        </div>
                                         <button @click="removeItem(section, idx)"
                                             class="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition p-1">
                                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -678,21 +738,9 @@ function cvEditor() {
         cvVisibility: @json($cv->visibility),
         objective: @json($cv->objective ?? ''),
         personal: @json($cv->personal_info ?? []),
-        sections: @json($cv->sections->map(fn($s) => [
-            'id' => $s->id,
-            'type' => $s->type,
-            'title' => $s->title,
-            'sort_order' => $s->sort_order,
-            'is_visible' => $s->is_visible,
-            'is_custom' => $s->is_custom,
-            'items' => $s->items->map(fn($i) => [
-                'id' => $i->id,
-                'content' => $i->content,
-                'sort_order' => $i->sort_order,
-            ])->values(),
-        ])->values()),
+        sections: @json($sectionsJson),
 
-        themeColors: ['#4F46E5', '#2563EB', '#0891B2', '#059669', '#D97706', '#DC2626', '#7C3AED', '#DB2777', '#374151', '#1F2937'],
+        themeColors: ['#4F46E5', '#2563EB', '#0891B2', '#059669', '#D97706', '#DC2626', '#7C3AED', '#DB2777', '#374151', '#1F2937', '#BE185D', '#9F1239', '#881337', '#4C1D95', '#1E3A8A', '#0F172A', '#134E4A', '#065F46', '#854D0E', '#78350F'],
 
         init() {
             setInterval(() => this.autoSave(), 30000);
@@ -718,7 +766,28 @@ function cvEditor() {
 
         debouncedSave() {
             clearTimeout(this.saveTimeout);
+            clearTimeout(this.previewRefreshTimeout);
             this.saveTimeout = setTimeout(() => this.autoSave(), 1500);
+            this.previewRefreshTimeout = setTimeout(() => this.refreshPreview(), 500);
+        },
+
+        previewRefreshTimeout: null,
+
+        async refreshPreview() {
+            try {
+                const res = await fetch('{{ route("cv.preview", $cv) }}', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                    },
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('cv-preview-frame').innerHTML = data.html;
+                }
+            } catch (e) {
+                console.error('Preview refresh error:', e);
+            }
         },
 
         async autoSave() {
@@ -850,6 +919,78 @@ function cvEditor() {
             } catch (e) {
                 console.error('Template change error:', e);
             }
+        },
+
+        async uploadAvatar(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Validate file
+            if (!file.type.match(/^image\/(jpeg|png|jpg|gif|webp)$/)) {
+                alert('Vui lòng chọn file hình ảnh (JPG, PNG, GIF, WebP)');
+                return;
+            }
+
+            if (file.size > 2 * 1024 * 1024) {
+                alert('Kích thước file không được vượt quá 2MB');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('avatar', file);
+
+            try {
+                const res = await fetch('{{ route("cv.avatar.upload", $cv) }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    body: formData,
+                });
+                const data = await res.json();
+                if (data.success) {
+                    this.personal.avatar = data.avatar_url;
+                    this.autoSave();
+                }
+            } catch (e) {
+                console.error('Avatar upload error:', e);
+                alert('Tải ảnh thất bại. Vui lòng thử lại.');
+            }
+        },
+
+        async removeAvatar() {
+            if (!confirm('Bạn có chắc muốn xóa ảnh đại diện?')) return;
+
+            try {
+                const res = await fetch('{{ route("cv.avatar.delete", $cv) }}', {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                    },
+                });
+                const data = await res.json();
+                if (data.success) {
+                    this.personal.avatar = '';
+                    this.autoSave();
+                }
+            } catch (e) {
+                console.error('Avatar delete error:', e);
+            }
+        },
+
+        getSkillLevelClass(level, index) {
+            const levels = {
+                'beginner': 1,
+                'intermediate': 2,
+                'advanced': 3,
+                'expert': 4,
+            };
+            const currentLevel = levels[level] || 0;
+            if (index <= currentLevel) {
+                return 'bg-indigo-600';
+            }
+            return 'bg-gray-200';
         },
 
         async exportPng() {

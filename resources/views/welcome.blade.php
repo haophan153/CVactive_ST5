@@ -30,6 +30,7 @@
 
                 <div class="hidden md:flex items-center space-x-6 text-sm font-medium">
                     <a href="{{ route('templates.index') }}" class="text-gray-600 hover:text-gray-900 transition">Mẫu CV</a>
+                    <a href="{{ route('jobs.index') }}" class="text-gray-600 hover:text-gray-900 transition">Việc làm</a>
                     <a href="{{ route('pricing') }}" class="text-gray-600 hover:text-gray-900 transition">Bảng giá</a>
                     <a href="{{ route('blog.index') }}" class="text-gray-600 hover:text-gray-900 transition">Blog</a>
                     <a href="{{ route('faq') }}" class="text-gray-600 hover:text-gray-900 transition">FAQ</a>

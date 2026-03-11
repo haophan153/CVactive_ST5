@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CvController;
 use App\Http\Controllers\TemplateController;
+use App\Http\Controllers\JobPostController;
 use Illuminate\Support\Facades\Route;
 
 // ── Public routes ──────────────────────────────────────────────────────────
@@ -29,8 +30,10 @@ Route::get('/faq', function () {
 Route::get('/blog', [\App\Http\Controllers\BlogController::class, 'index'])->name('blog.index');
 Route::get('/blog/{slug}', [\App\Http\Controllers\BlogController::class, 'show'])->name('blog.show');
 
-// CV public share
+// CV public share (no auth)
 Route::get('/cv/s/{token}', [CvController::class, 'share'])->name('cv.public');
+Route::get('/cv/s/{token}/pdf', [CvController::class, 'exportPdfByShareToken'])->name('cv.public.pdf');
+Route::get('/cv/s/{token}/png', [CvController::class, 'exportPngByShareToken'])->name('cv.public.png');
 
 // ── Authenticated + verified routes ───────────────────────────────────────
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -52,6 +55,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // CV Template switch
     Route::post('/cv/{cv}/template', [CvController::class, 'changeTemplate'])->name('cv.template.change');
 
+    // CV Avatar
+    Route::post('/cv/{cv}/avatar', [CvController::class, 'uploadAvatar'])->name('cv.avatar.upload');
+    Route::delete('/cv/{cv}/avatar', [CvController::class, 'deleteAvatar'])->name('cv.avatar.delete');
+
+    // CV Preview (AJAX)
+    Route::get('/cv/{cv}/preview', [CvController::class, 'getPreview'])->name('cv.preview');
+
     // CV Share & Export
     Route::post('/cv/{cv}/share', [CvController::class, 'getShareLink'])->name('cv.share');
     Route::get('/cv/{cv}/pdf', [CvController::class, 'exportPdf'])->name('cv.pdf');
@@ -59,6 +69,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Templates
     Route::get('/templates', [TemplateController::class, 'index'])->name('templates.index');
+    Route::get('/templates/{template}/preview', [TemplateController::class, 'preview'])->name('templates.preview');
 
     // Profile
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -92,6 +103,38 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::resource('blog', \App\Http\Controllers\Admin\BlogController::class)->except(['show']);
     Route::get('payments', [\App\Http\Controllers\Admin\PaymentController::class, 'index'])->name('payments.index');
     Route::patch('payments/{payment}/status', [\App\Http\Controllers\Admin\PaymentController::class, 'updateStatus'])->name('payments.status');
+});
+
+// ── HR routes ──────────────────────────────────────────────────────────────
+Route::middleware(['auth', 'hr'])->prefix('hr')->name('hr.')->group(function () {
+    Route::get('/job-posts', [JobPostController::class, 'index'])->name('job-posts.index');
+    Route::get('/job-posts/create', [JobPostController::class, 'create'])->name('job-posts.create');
+    Route::post('/job-posts', [JobPostController::class, 'store'])->name('job-posts.store');
+    Route::get('/job-posts/{jobPost}', [JobPostController::class, 'show'])->name('job-posts.show');
+    Route::get('/job-posts/{jobPost}/edit', [JobPostController::class, 'edit'])->name('job-posts.edit');
+    Route::put('/job-posts/{jobPost}', [JobPostController::class, 'update'])->name('job-posts.update');
+    Route::delete('/job-posts/{jobPost}', [JobPostController::class, 'destroy'])->name('job-posts.destroy');
+    Route::post('/job-posts/{jobPost}/publish', [JobPostController::class, 'publish'])->name('job-posts.publish');
+    Route::post('/job-posts/{jobPost}/close', [JobPostController::class, 'close'])->name('job-posts.close');
+    
+    // Ứng viên theo từng bài đăng
+    Route::get('/job-posts/{jobPost}/applications', [App\Http\Controllers\JobApplicationController::class, 'hrApplicationsByJob'])->name('job-posts.applications');
+    
+    // Quản lý ứng viên (tất cả)
+    Route::get('/applications', [App\Http\Controllers\JobApplicationController::class, 'hrIndex'])->name('applications.index');
+    Route::get('/applications/{application}', [App\Http\Controllers\JobApplicationController::class, 'hrShow'])->name('applications.show');
+    Route::patch('/applications/{application}', [App\Http\Controllers\JobApplicationController::class, 'updateStatus'])->name('applications.updateStatus');
+    Route::delete('/applications/{application}', [App\Http\Controllers\JobApplicationController::class, 'destroy'])->name('applications.destroy');
+});
+
+// Public job listings
+Route::get('/jobs', [JobPostController::class, 'publicIndex'])->name('jobs.index');
+Route::get('/jobs/{jobPost}', [JobPostController::class, 'publicShow'])->name('jobs.show');
+Route::post('/jobs/{jobPost}/apply', [App\Http\Controllers\JobApplicationController::class, 'apply'])->name('jobs.apply');
+
+// User routes - lịch sử ứng tuyển
+Route::middleware(['auth', 'verified'])->prefix('my-applications')->name('my-applications.')->group(function () {
+    Route::get('/', [App\Http\Controllers\JobApplicationController::class, 'myApplications'])->name('index');
 });
 
 require __DIR__ . '/auth.php';
