@@ -9,8 +9,14 @@
 </head>
 <body class="bg-gray-100 min-h-screen py-8">
     <div class="max-w-4xl mx-auto px-4">
-        <div class="bg-white shadow-xl rounded-xl overflow-hidden" style="font-family: '{{ $cv->font_family }}', sans-serif;">
-            @include($cv->template->blade_view ?? 'cv-templates.classic-blue', ['cv' => $cv, 'preview' => false])
+        <div class="bg-white shadow-xl rounded-xl overflow-hidden" style="font-family: '{{ $cv->font_family }}', sans-serif; min-height: 297mm;">
+            @php
+                // Load template directly from database to avoid any stale data
+                $templateModel = \App\Models\Template::find($cv->template_id);
+                $bladeView = $templateModel ? $templateModel->blade_view : null;
+                $actualView = $bladeView && \View::exists($bladeView) ? $bladeView : 'cv-templates.classic-blue';
+            @endphp
+            @include($actualView, ['cv' => $cv, 'preview' => false])
         </div>
 
         <div class="mt-6 text-center space-y-3">

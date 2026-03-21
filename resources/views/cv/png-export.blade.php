@@ -30,7 +30,13 @@
 
     {{-- Hidden CV for capture --}}
     <div id="cv-container">
-        @include($cv->template->blade_view ?? 'cv-templates.classic-blue', ['cv' => $cv, 'preview' => false])
+        @php
+            // Load template directly from database to avoid any stale data
+            $templateModel = \App\Models\Template::find($cv->template_id);
+            $bladeView = $templateModel ? $templateModel->blade_view : null;
+            $actualView = $bladeView && \View::exists($bladeView) ? $bladeView : 'cv-templates.classic-blue';
+        @endphp
+        @include($actualView, ['cv' => $cv, 'preview' => false])
     </div>
 
     <div id="actions" style="display:none; flex-direction: column; align-items: center; gap: 8px;">

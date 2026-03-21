@@ -313,13 +313,23 @@ class CvController extends Controller
 
         $cv = $share->cv->load(['template', 'sections.items']);
 
-        // Render the CV HTML
         $html = view('cv.pdf', compact('cv'))->render();
 
-        // Use dompdf instead of mPDF
+        // Ensure all fonts are 'dejavusans' (lowercase, no space) for full Unicode / Vietnamese support
+        // dompdf only recognizes 'dejavusans' (not 'DejaVu Sans' with space)
+        $html = str_replace(
+            "font-family: 'Helvetica', 'Arial', sans-serif",
+            "font-family: 'dejavusans', sans-serif",
+            $html
+        );
+        $html = preg_replace('/font-family\s*:\s*["\'][^"\']+["\']/i', "font-family: 'dejavusans'", $html);
+
         $pdf = \PDF::loadHTML($html);
-        
-        // Output to browser
+        $pdf->setPaper('A4', 'portrait');
+        $pdf->setOption('enable-local-file-access', true);
+        $pdf->setOption('isHtml5ParserEnabled', true);
+        $pdf->setOption('isRemoteEnabled', false);
+
         return $pdf->download(Str::slug($cv->title) . '.pdf');
     }
 
@@ -390,8 +400,8 @@ class CvController extends Controller
             'avatar' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ]);
 
-        // Xóa avatar cũ nếu có
-        if (!empty($cv->personal_info['avatar'])) {
+        // Xóa avatar cũ nếu có (chỉ xóa file local, không xóa URL bên ngoài như Google avatars)
+        if (!empty($cv->personal_info['avatar']) && !str_starts_with($cv->personal_info['avatar'], 'http')) {
             $oldAvatar = public_path('storage/' . $cv->personal_info['avatar']);
             if (file_exists($oldAvatar)) {
                 unlink($oldAvatar);
@@ -409,6 +419,7 @@ class CvController extends Controller
         return response()->json([
             'success' => true,
             'avatar_url' => asset('storage/' . $path),
+            'avatar_path' => $path,
         ]);
     }
 
@@ -420,9 +431,14 @@ class CvController extends Controller
         $this->authorize('update', $cv);
 
         if (!empty($cv->personal_info['avatar'])) {
-            $avatarPath = public_path('storage/' . $cv->personal_info['avatar']);
-            if (file_exists($avatarPath)) {
-                unlink($avatarPath);
+            $oldAvatar = $cv->personal_info['avatar'];
+
+            // Only delete local files (skip external URLs like Google avatars)
+            if (!str_starts_with($oldAvatar, 'http')) {
+                $avatarPath = public_path('storage/' . $oldAvatar);
+                if (file_exists($avatarPath)) {
+                    unlink($avatarPath);
+                }
             }
 
             $personalInfo = $cv->personal_info ?? [];
@@ -442,7 +458,12 @@ class CvController extends Controller
 
         $cv->load(['template', 'sections.items']);
 
-        $html = view($cv->template->blade_view ?? 'cv-templates.classic-blue', [
+        // Load template directly from database to avoid any stale data
+        $templateModel = \App\Models\Template::find($cv->template_id);
+        $bladeView = $templateModel ? $templateModel->blade_view : null;
+        $actualView = $bladeView && \View::exists($bladeView) ? $bladeView : 'cv-templates.classic-blue';
+
+        $html = view($actualView, [
             'cv' => $cv,
             'preview' => true,
         ])->render();
@@ -456,16 +477,25 @@ class CvController extends Controller
     public function exportPdf(Cv $cv)
     {
         $this->authorize('view', $cv);
-
         $cv->load(['template', 'sections.items']);
 
-        // Render the CV HTML
         $html = view('cv.pdf', compact('cv'))->render();
 
-        // Use dompdf instead of mPDF
+        // Ensure all fonts are 'dejavusans' (lowercase, no space) for full Unicode / Vietnamese support
+        // dompdf only recognizes 'dejavusans' (not 'DejaVu Sans' with space)
+        $html = str_replace(
+            "font-family: 'Helvetica', 'Arial', sans-serif",
+            "font-family: 'dejavusans', sans-serif",
+            $html
+        );
+        $html = preg_replace('/font-family\s*:\s*["\'][^"\']+["\']/i', "font-family: 'dejavusans'", $html);
+
         $pdf = \PDF::loadHTML($html);
-        
-        // Output to browser
+        $pdf->setPaper('A4', 'portrait');
+        $pdf->setOption('enable-local-file-access', true);
+        $pdf->setOption('isHtml5ParserEnabled', true);
+        $pdf->setOption('isRemoteEnabled', false);
+
         return $pdf->download(Str::slug($cv->title) . '.pdf');
     }
 
