@@ -685,8 +685,16 @@
         </div>
 
         <div class="flex-1 overflow-auto p-4 flex justify-center">
-            <div id="cv-preview-frame" class="w-[210mm] min-h-[297mm] bg-white shadow-xl" :style="`font-family: '${cvFontFamily}', sans-serif`">
-                @include($cv->template->blade_view ?? 'cv-templates.classic-blue', ['cv' => $cv, 'preview' => true])
+            <div id="cv-preview-frame"
+                 class="w-[210mm] min-h-[297mm] bg-white shadow-xl"
+                 :style="`font-family: '${cvFontFamily}', sans-serif; min-height: 297mm;`">
+                @php
+                    // Load template directly from database to avoid any stale data
+                    $templateModel = \App\Models\Template::find($cv->template_id);
+                    $bladeView = $templateModel ? $templateModel->blade_view : null;
+                    $actualView = $bladeView && \View::exists($bladeView) ? $bladeView : 'cv-templates.classic-blue';
+                @endphp
+                @include($actualView, ['cv' => $cv, 'preview' => true])
             </div>
         </div>
     </aside>
@@ -949,7 +957,8 @@ function cvEditor() {
                 });
                 const data = await res.json();
                 if (data.success) {
-                    this.personal.avatar = data.avatar_url;
+                    // Store relative path in state (not full URL), let display logic handle /storage/ prefix
+                    this.personal.avatar = data.avatar_path;
                     this.autoSave();
                 }
             } catch (e) {

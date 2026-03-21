@@ -17,7 +17,7 @@
     $avatar    = $personal['avatar'] ?? '';
 @endphp
 
-<div class="cv-document" style="font-family: '{{ $font }}', sans-serif; color: #1f2937;">
+<div class="cv-document" style="font-family: '{{ $font }}', sans-serif; color: #1f2937; min-height: 297mm;">
 
     {{-- HEADER --}}
     <div style="background-color: {{ $themeColor }}; padding: 32px 40px; color: white;">
