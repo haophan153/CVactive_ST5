@@ -29,6 +29,11 @@
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
         </a>
         <div class="w-px h-6 bg-gray-200"></div>
+        <a href="{{ route('home') }}" class="flex items-center gap-1.5 shrink-0">
+            <img src="{{ asset('storage/avatars/logo/logo.png') }}" alt="CVactive" class="h-5 w-auto object-contain">
+            <span class="font-bold text-sm text-gray-900">CV<span class="text-indigo-600">active</span></span>
+        </a>
+        <div class="w-px h-6 bg-gray-200"></div>
         <input type="text" x-model="cvTitle"
             @blur="autoSave()"
             class="text-gray-900 font-semibold text-sm bg-transparent border-0 focus:ring-0 focus:outline-none px-1 w-56"
