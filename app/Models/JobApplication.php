@@ -14,6 +14,7 @@ class JobApplication extends Model
         'email',
         'phone',
         'cv_file',
+        'cv_text',
         'cover_letter',
         'status',
         'notes',

@@ -117,9 +117,12 @@ Route::middleware(['auth', 'hr'])->prefix('hr')->name('hr.')->group(function () 
     Route::post('/job-posts/{jobPost}/publish', [JobPostController::class, 'publish'])->name('job-posts.publish');
     Route::post('/job-posts/{jobPost}/close', [JobPostController::class, 'close'])->name('job-posts.close');
     
+    // Tìm kiếm CV ứng viên theo kỹ năng/kinh nghiệm
+    Route::get('/job-posts/{jobPost}/search-cv', [App\Http\Controllers\JobApplicationController::class, 'searchCv'])->name('job-posts.search-cv');
+
     // Ứng viên theo từng bài đăng
     Route::get('/job-posts/{jobPost}/applications', [App\Http\Controllers\JobApplicationController::class, 'hrApplicationsByJob'])->name('job-posts.applications');
-    
+
     // Quản lý ứng viên (tất cả)
     Route::get('/applications', [App\Http\Controllers\JobApplicationController::class, 'hrIndex'])->name('applications.index');
     Route::get('/applications/{application}', [App\Http\Controllers\JobApplicationController::class, 'hrShow'])->name('applications.show');

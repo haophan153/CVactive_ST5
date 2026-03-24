@@ -6,12 +6,37 @@ use Illuminate\Http\Request;
 use App\Models\JobApplication;
 use App\Models\JobPost;
 use App\Models\Cv;
+use App\Services\PdfTextExtractor;
 
 class JobApplicationController extends Controller
 {
     public function __construct()
     {
         $this->middleware('auth')->except(['apply']);
+    }
+
+    /**
+     * Trích xuất text từ PDF đã upload vào cột cv_text cho tất cả ứng viên của tin tuyển dụng
+     */
+    private function extractCvTextForJobPost(int $jobPostId): void
+    {
+        $appsWithoutText = JobApplication::where('job_post_id', $jobPostId)
+            ->whereNotNull('cv_file')
+            ->whereNull('cv_text')
+            ->get();
+
+        if ($appsWithoutText->isEmpty()) {
+            return;
+        }
+
+        $extractor = new PdfTextExtractor();
+
+        foreach ($appsWithoutText as $app) {
+            $text = $extractor->extractFromFile($app->cv_file);
+            if ($text) {
+                $app->update(['cv_text' => $text]);
+            }
+        }
     }
 
     /**
@@ -63,6 +88,59 @@ class JobApplicationController extends Controller
     }
 
     /**
+     * HR: Tìm kiếm CV theo kỹ năng/kinh nghiệm trong ứng viên của 1 tin tuyển dụng
+     */
+    public function searchCv(Request $request, JobPost $jobPost)
+    {
+        if ($jobPost->user_id !== auth()->id() && auth()->user()->role !== 'admin') {
+            abort(403, 'Bạn không có quyền truy cập!');
+        }
+
+        $keyword = $request->get('q');
+
+        // Trích xuất text từ PDF file upload cho các application chưa có cv_text
+        $this->extractCvTextForJobPost($jobPost->id);
+
+        $query = JobApplication::with(['user', 'cv.sections.items'])
+            ->where('job_post_id', $jobPost->id);
+
+        if ($keyword) {
+            $query->where(function ($q) use ($keyword) {
+                // Tìm trong thông tin cá nhân của ứng viên
+                $q->where('full_name', 'like', "%{$keyword}%")
+                    ->orWhere('email', 'like', "%{$keyword}%")
+                    ->orWhere('phone', 'like', "%{$keyword}%");
+
+                // Tìm trong text đã trích xuất từ PDF file upload
+                $q->orWhere('cv_text', 'like', "%{$keyword}%");
+
+                // Tìm trong personal_info->skills của CV (dạng JSON array)
+                $q->orWhereHas('cv', function ($cvq) use ($keyword) {
+                    $cvq->where('personal_info->skills', 'like', "%{$keyword}%");
+                });
+
+                // Tìm trong nội dung CV sections/items
+                $q->orWhereHas('cv.sections.items', function ($sq) use ($keyword) {
+                    $sq->where(function ($sq2) use ($keyword) {
+                        $sq2->orWhere('content->name', 'like', "%{$keyword}%");
+                        $sq2->orWhere('content->position', 'like', "%{$keyword}%");
+                        $sq2->orWhere('content->company', 'like', "%{$keyword}%");
+                        $sq2->orWhere('content->description', 'like', "%{$keyword}%");
+                        $sq2->orWhere('content->degree', 'like', "%{$keyword}%");
+                        $sq2->orWhere('content->school', 'like', "%{$keyword}%");
+                        $sq2->orWhere('content->tech', 'like', "%{$keyword}%");
+                        $sq2->orWhere('content->url', 'like', "%{$keyword}%");
+                    });
+                });
+            });
+        }
+
+        $applications = $query->latest('applied_at')->paginate(12)->withQueryString();
+
+        return view('hr.applications.cv-search', compact('applications', 'jobPost', 'keyword'));
+    }
+
+    /**
      * HR: Ứng viên theo từng bài đăng
      */
     public function hrApplicationsByJob(Request $request, JobPost $jobPost)
@@ -80,7 +158,7 @@ class JobApplicationController extends Controller
             $query->where('status', $request->status);
         }
 
-        // Search
+        // Search by applicant info
         if ($request->search) {
             $query->where(function ($q) use ($request) {
                 $q->where('full_name', 'like', "%{$request->search}%")

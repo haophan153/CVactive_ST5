@@ -40,9 +40,18 @@
                         @endif
                     </div>
                 </div>
-                <div class="text-right">
-                    <p class="text-sm text-gray-500">Tổng ứng viên</p>
-                    <p class="text-3xl font-bold text-indigo-600">{{ $applications->total() }}</p>
+                <div class="text-right flex items-center gap-4">
+                    <div>
+                        <p class="text-sm text-gray-500">Tổng ứng viên</p>
+                        <p class="text-3xl font-bold text-indigo-600">{{ $applications->total() }}</p>
+                    </div>
+                    <a href="{{ route('hr.job-posts.search-cv', $jobPost) }}"
+                        class="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition shadow-sm flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                        Tìm kiếm CV
+                    </a>
                 </div>
             </div>
         </div>

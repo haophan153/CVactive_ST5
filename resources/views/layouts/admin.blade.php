@@ -18,11 +18,15 @@
 
         {{-- Logo --}}
         <div class="flex items-center h-16 px-5 border-b border-gray-700 flex-shrink-0">
-            <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-2.5">
-                <img src="{{ asset('storage/avatars/logo/logo.png') }}" alt="CVactive Admin" class="h-7 w-auto object-contain brightness-0 invert">
+            <a href="{{ auth()->user()->role === 'admin' ? route('admin.dashboard') : route('hr.job-posts.index') }}" class="flex items-center gap-2.5">
+                <img src="{{ asset('storage/avatars/logo/logo.png') }}" alt="CVactive" class="h-7 w-auto object-contain brightness-0 invert">
                 <span class="font-bold text-white text-lg">CV<span class="text-indigo-400">active</span></span>
             </a>
+            @if(auth()->user()->role === 'admin')
             <span class="ml-2 text-xs bg-indigo-700 text-indigo-200 px-2 py-0.5 rounded font-medium">Admin</span>
+            @else
+            <span class="ml-2 text-xs bg-emerald-700 text-emerald-200 px-2 py-0.5 rounded font-medium">HR</span>
+            @endif
         </div>
 
         {{-- Nav --}}
@@ -37,6 +41,8 @@
             ];
             @endphp
 
+            {{-- Chỉ Admin mới thấy menu quản trị --}}
+            @if(auth()->user()->role === 'admin')
             @foreach($navItems as $item)
             @php $isActive = request()->routeIs($item['route']) || request()->routeIs(str_replace('.index','.*',$item['route'])); @endphp
             <a href="{{ route($item['route']) }}"
@@ -47,6 +53,7 @@
                 <span>{{ $item['label'] }}</span>
             </a>
             @endforeach
+            @endif
 
             <div class="pt-4 mt-4 border-t border-gray-700">
                 <a href="{{ route('dashboard') }}"
