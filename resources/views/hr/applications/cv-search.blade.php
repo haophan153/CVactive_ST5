@@ -206,10 +206,11 @@
                             class="flex-1 text-center px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition">
                             Xem chi tiết
                         </a>
-                        @elseif($application->cv_file)
-                        <a href="{{ asset('storage/'.$application->cv_file) }}" target="_blank"
+                        @elseif($application->hasCvFile())
+                        {{-- SECURE: Use controller route instead of direct file URL --}}
+                        <a href="{{ route('hr.applications.cv.download', $application) }}"
                             class="flex-1 text-center px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition">
-                            Xem file CV
+                            Tải file CV
                         </a>
                         @else
                         <a href="{{ route('hr.applications.show', $application) }}"

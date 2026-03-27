@@ -127,6 +127,24 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
+        /*
+        |--------------------------------------------------------------------------
+        | CV Access Log Channel
+        |--------------------------------------------------------------------------
+        |
+        | Dedicated channel for logging CV file access attempts.
+        | This helps with security auditing and tracking who accesses sensitive
+        | candidate data.
+        |
+        */
+        'cv_access' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/cv-access.log'),
+            'level' => 'info',
+            'days' => env('LOG_CV_ACCESS_DAYS', 90),
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];

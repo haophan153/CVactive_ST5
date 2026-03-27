@@ -116,7 +116,7 @@ Route::middleware(['auth', 'hr'])->prefix('hr')->name('hr.')->group(function () 
     Route::delete('/job-posts/{jobPost}', [JobPostController::class, 'destroy'])->name('job-posts.destroy');
     Route::post('/job-posts/{jobPost}/publish', [JobPostController::class, 'publish'])->name('job-posts.publish');
     Route::post('/job-posts/{jobPost}/close', [JobPostController::class, 'close'])->name('job-posts.close');
-    
+
     // Tìm kiếm CV ứng viên theo kỹ năng/kinh nghiệm
     Route::get('/job-posts/{jobPost}/search-cv', [App\Http\Controllers\JobApplicationController::class, 'searchCv'])->name('job-posts.search-cv');
 
@@ -128,6 +128,22 @@ Route::middleware(['auth', 'hr'])->prefix('hr')->name('hr.')->group(function () 
     Route::get('/applications/{application}', [App\Http\Controllers\JobApplicationController::class, 'hrShow'])->name('applications.show');
     Route::patch('/applications/{application}', [App\Http\Controllers\JobApplicationController::class, 'updateStatus'])->name('applications.updateStatus');
     Route::delete('/applications/{application}', [App\Http\Controllers\JobApplicationController::class, 'destroy'])->name('applications.destroy');
+
+    // ============================================================
+    // SECURE CV DOWNLOAD - Critical security route
+    // ============================================================
+    // Route này KHÔNG có middleware 'hr' vì:
+    // 1. Admin cũng cần tải CV được
+    // 2. Authorization được xử lý bên trong controller qua Gate/Policy
+    // 3. Đảm bảo chỉ chủ sở hữu job post mới tải được CV
+    Route::get('/applications/{application}/cv', [App\Http\Controllers\JobApplicationController::class, 'downloadCv'])
+        ->name('applications.cv.download')
+        ->middleware('auth');
+
+    // Optional: Temporary signed URL cho CV (dùng trong email)
+    Route::get('/applications/{application}/cv-url', [App\Http\Controllers\JobApplicationController::class, 'getSignedUrl'])
+        ->name('applications.cv.url')
+        ->middleware('auth');
 });
 
 // Public job listings

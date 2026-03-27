@@ -14,9 +14,22 @@ class PdfTextExtractor
         $this->parser = new Parser();
     }
 
-    public function extractFromFile(string $filePath): string
+    /**
+     * Trích xuất text từ file PDF
+     * Hỗ trợ cả public disk (legacy) và local disk (private storage)
+     *
+     * @param string $filePath Đường dẫn file (không bao gồm prefix disk)
+     * @param string $disk 'public' hoặc 'local' (default: 'local' cho bảo mật)
+     * @return string
+     */
+    public function extractFromFile(string $filePath, string $disk = 'local'): string
     {
-        $fullPath = Storage::disk('public')->path($filePath);
+        // Nếu là local disk (private), đường dẫn đã bao gồm 'private/'
+        if ($disk === 'local') {
+            $fullPath = storage_path('app/private/' . $filePath);
+        } else {
+            $fullPath = Storage::disk('public')->path($filePath);
+        }
 
         if (!file_exists($fullPath)) {
             return '';
