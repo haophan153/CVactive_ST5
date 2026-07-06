@@ -37,7 +37,8 @@ Route::get('/cv/s/{token}/png', [CvController::class, 'exportPngByShareToken'])-
 // ── Authenticated + verified routes ───────────────────────────────────────
 Route::middleware(['auth', 'verified'])->group(function () {
 
-    Route::get('/dashboard', [CvController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/heartbeat', [\App\Http\Controllers\DashboardController::class, 'heartbeat'])->name('dashboard.heartbeat');
 
     // CV Management
     Route::get('/cv/create', [CvController::class, 'create'])->name('cv.create');

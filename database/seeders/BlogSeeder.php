@@ -40,6 +40,7 @@ class BlogSeeder extends Seeder
                 'excerpt' => 'Bí quyết để CV của bạn nổi bật giữa hàng trăm hồ sơ ứng tuyển và gây ấn tượng với nhà tuyển dụng.',
                 'featured'=> true,
                 'views'   => 4521,
+                'image'   => 'https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=1200&q=80&auto=format&fit=crop',
             ],
             [
                 'title'   => 'Cách trả lời câu hỏi "Điểm yếu của bạn là gì?"',
@@ -47,6 +48,7 @@ class BlogSeeder extends Seeder
                 'excerpt' => 'Câu hỏi kinh điển nhưng không kém phần khó nhằn. Học cách biến điểm yếu thành cơ hội.',
                 'featured'=> true,
                 'views'   => 3892,
+                'image'   => 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=1200&q=80&auto=format&fit=crop',
             ],
             [
                 'title'   => 'Đàm phán lương: Khi nào nên nhận, khi nào nên từ chối?',
@@ -54,6 +56,7 @@ class BlogSeeder extends Seeder
                 'excerpt' => 'Hướng dẫn chi tiết cách thương lượng mức lương xứng đáng mà không đánh mất cơ hội.',
                 'featured'=> false,
                 'views'   => 2743,
+                'image'   => 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=1200&q=80&auto=format&fit=crop',
             ],
             [
                 'title'   => '5 chiến lược tìm việc hiệu quả trong năm 2026',
@@ -61,6 +64,7 @@ class BlogSeeder extends Seeder
                 'excerpt' => 'Thị trường lao động thay đổi từng ngày. Cập nhật những cách tìm việc mới nhất.',
                 'featured'=> false,
                 'views'   => 2105,
+                'image'   => 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=1200&q=80&auto=format&fit=crop',
             ],
             [
                 'title'   => 'Lộ trình thăng tiến cho người đi làm 3-5 năm',
@@ -68,6 +72,7 @@ class BlogSeeder extends Seeder
                 'excerpt' => 'Xây dựng kế hoạch phát triển sự nghiệp rõ ràng để đạt được vị trí mong muốn.',
                 'featured'=> false,
                 'views'   => 1856,
+                'image'   => 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1200&q=80&auto=format&fit=crop',
             ],
             [
                 'title'   => '7 kỹ năng mềm nhà tuyển dụng tìm kiếm nhiều nhất',
@@ -75,6 +80,7 @@ class BlogSeeder extends Seeder
                 'excerpt' => 'Không chỉ chuyên môn, các kỹ năng mềm này sẽ giúp bạn tỏa sáng trong mắt nhà tuyển dụng.',
                 'featured'=> false,
                 'views'   => 1623,
+                'image'   => 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=1200&q=80&auto=format&fit=crop',
             ],
             [
                 'title'   => 'ATS là gì? Cách viết CV "vượt qua" hệ thống lọc tự động',
@@ -82,6 +88,7 @@ class BlogSeeder extends Seeder
                 'excerpt' => 'Tìm hiểu cách hoạt động của ATS và làm sao để CV của bạn được hệ thống chấp nhận.',
                 'featured'=> false,
                 'views'   => 1432,
+                'image'   => 'https://images.unsplash.com/photo-1551434678-e076c223a692?w=1200&q=80&auto=format&fit=crop',
             ],
             [
                 'title'   => 'Câu hỏi phỏng vấn tiếng Anh thường gặp và cách trả lời',
@@ -89,6 +96,7 @@ class BlogSeeder extends Seeder
                 'excerpt' => 'Tổng hợp 20 câu hỏi phỏng vấn tiếng Anh phổ biến nhất cùng gợi ý trả lời.',
                 'featured'=> false,
                 'views'   => 1289,
+                'image'   => 'https://images.unsplash.com/photo-1543269664-7eef42226a21?w=1200&q=80&auto=format&fit=crop',
             ],
             [
                 'title'   => 'Phỏng vấn online: 8 điều cần chuẩn bị kỹ lưỡng',
@@ -96,6 +104,7 @@ class BlogSeeder extends Seeder
                 'excerpt' => 'Hướng dẫn toàn tập giúp bạn tỏa sáng trong các buổi phỏng vấn qua Zoom, Teams.',
                 'featured'=> false,
                 'views'   => 1156,
+                'image'   => 'https://images.unsplash.com/photo-1588196749597-9ff075ee6b5b?w=1200&q=80&auto=format&fit=crop',
             ],
             [
                 'title'   => 'Cách viết thư xin việc (Cover Letter) gây ấn tượng',
@@ -103,6 +112,7 @@ class BlogSeeder extends Seeder
                 'excerpt' => 'Cover Letter là yếu tố tạo sự khác biệt. Học cách viết một bức thư xin việc chuyên nghiệp.',
                 'featured'=> false,
                 'views'   => 987,
+                'image'   => 'https://images.unsplash.com/photo-1455390582262-044cdead277a?w=1200&q=80&auto=format&fit=crop',
             ],
             [
                 'title'   => 'LinkedIn profile: Hồ sơ vàng cho người tìm việc',
@@ -110,6 +120,7 @@ class BlogSeeder extends Seeder
                 'excerpt' => 'Tối ưu hóa hồ sơ LinkedIn để tiếp cận nhà tuyển dụng và headhunter hàng đầu.',
                 'featured'=> false,
                 'views'   => 856,
+                'image'   => 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=1200&q=80&auto=format&fit=crop',
             ],
             [
                 'title'   => 'Trắc nghiệm tính cách MBTI có thật sự hữu ích?',
@@ -117,20 +128,42 @@ class BlogSeeder extends Seeder
                 'excerpt' => 'Phân tích ưu nhược điểm của MBTI trong việc lựa chọn nghề nghiệp phù hợp.',
                 'featured'=> false,
                 'views'   => 743,
+                'image'   => 'https://images.unsplash.com/photo-1542038784456-1ea8e935640e?w=1200&q=80&auto=format&fit=crop',
             ],
         ];
 
         foreach ($posts as $i => $p) {
             $title = $p['title'];
+            $slug  = Str::slug($title);
+            $imagePath = null;
+
+            if (! empty($p['image'])) {
+                try {
+                    $response = \Illuminate\Support\Facades\Http::timeout(15)->get($p['image']);
+                    if ($response->successful()) {
+                        \Illuminate\Support\Facades\Storage::disk('public')->makeDirectory('blog');
+                        $ext = strtolower(pathinfo(parse_url($p['image'], PHP_URL_PATH) ?? '', PATHINFO_EXTENSION));
+                        if (! in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+                            $ext = 'jpg';
+                        }
+                        $filename = $slug . '-' . substr(md5($slug), 0, 6) . '.' . $ext;
+                        \Illuminate\Support\Facades\Storage::disk('public')->put('blog/' . $filename, $response->body());
+                        $imagePath = 'blog/' . $filename;
+                    }
+                } catch (\Throwable $e) {
+                    // ignore – leave null
+                }
+            }
+
             BlogPost::updateOrCreate(
-                ['slug' => Str::slug($title)],
+                ['slug' => $slug],
                 [
                     'author_id'      => $author->id,
                     'category_id'    => $catMap[$p['category']] ?? null,
                     'title'          => $title,
                     'excerpt'        => $p['excerpt'],
                     'content'        => $this->longContent($title, $p['excerpt']),
-                    'featured_image' => null,
+                    'featured_image' => $imagePath,
                     'status'         => 'published',
                     'is_featured'    => $p['featured'],
                     'views_count'    => $p['views'],
