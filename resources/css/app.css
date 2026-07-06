@@ -1,3 +1,6 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Ẩn element đang dùng Alpine x-cloak cho tới khi Alpine load xong (chống flash) */
+[x-cloak] { display: none !important; }

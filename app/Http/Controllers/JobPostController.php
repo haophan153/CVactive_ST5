@@ -32,19 +32,26 @@ class JobPostController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'required|string',
             'location' => 'nullable|string|max:255',
-            'job_type' => 'nullable|string|in:full-time,part-time,contract,intern,freelance',
+            'job_type' => 'nullable|string|in:full-time,part-time,contract,internship,remote',
+            'category' => 'nullable|string|max:50',
+            'experience_level' => 'nullable|string|in:fresher,junior,middle,senior,lead',
             'salary_min' => 'nullable|integer|min:0',
             'salary_max' => 'nullable|integer|min:0|gte:salary_min',
+            'salary_currency' => 'nullable|string|max:10',
             'company_name' => 'nullable|string|max:255',
             'company_description' => 'nullable|string',
             'company_logo' => 'nullable|image|max:2048',
             'contact_email' => 'nullable|email',
             'contact_phone' => 'nullable|string|max:20',
             'expires_at' => 'nullable|date|after:today',
+            'is_remote' => 'nullable|boolean',
+            'is_hot' => 'nullable|boolean',
         ]);
 
         $validated['user_id'] = auth()->id();
         $validated['status'] = 'draft';
+        $validated['is_remote'] = $request->boolean('is_remote');
+        $validated['is_hot'] = $request->boolean('is_hot');
 
         if ($request->hasFile('company_logo')) {
             $validated['company_logo'] = $request->file('company_logo')->store('company_logos', 'public');
@@ -78,16 +85,24 @@ class JobPostController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'required|string',
             'location' => 'nullable|string|max:255',
-            'job_type' => 'nullable|string|in:full-time,part-time,contract,intern,freelance',
+            'job_type' => 'nullable|string|in:full-time,part-time,contract,internship,remote',
+            'category' => 'nullable|string|max:50',
+            'experience_level' => 'nullable|string|in:fresher,junior,middle,senior,lead',
             'salary_min' => 'nullable|integer|min:0',
             'salary_max' => 'nullable|integer|min:0|gte:salary_min',
+            'salary_currency' => 'nullable|string|max:10',
             'company_name' => 'nullable|string|max:255',
             'company_description' => 'nullable|string',
             'company_logo' => 'nullable|image|max:2048',
             'contact_email' => 'nullable|email',
             'contact_phone' => 'nullable|string|max:20',
             'expires_at' => 'nullable|date',
+            'is_remote' => 'nullable|boolean',
+            'is_hot' => 'nullable|boolean',
         ]);
+
+        $validated['is_remote'] = $request->boolean('is_remote');
+        $validated['is_hot'] = $request->boolean('is_hot');
 
         if ($request->hasFile('company_logo')) {
             $validated['company_logo'] = $request->file('company_logo')->store('company_logos', 'public');

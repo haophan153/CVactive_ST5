@@ -50,41 +50,8 @@
 </head>
 <body class="bg-white text-slate-900 antialiased">
 
-    {{-- NAVBAR --}}
-    <nav class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-100">
-        <div class="max-w-6xl mx-auto px-6">
-            <div class="flex items-center justify-between h-16">
-                <a href="{{ route('home') }}" class="flex items-center gap-2.5 shrink-0">
-                    <img src="{{ asset('storage/avatars/logo/logo.png') }}" style="height:60px" alt="CVactive" class="h-9 w-auto object-contain">
-                    <span class="text-xl font-bold text-slate-900">CV<span class="text-indigo-500">active</span></span>
-                </a>
-
-                <div class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
-                    <a href="{{ route('templates.index') }}" class="hover:text-slate-900 transition">Mẫu CV</a>
-                    <a href="{{ route('jobs.index') }}" class="hover:text-slate-900 transition">Việc làm</a>
-                    <a href="{{ route('pricing') }}" class="hover:text-slate-900 transition">Bảng giá</a>
-                    <a href="{{ route('blog.index') }}" class="hover:text-slate-900 transition">Blog</a>
-                    <a href="{{ route('faq') }}" class="hover:text-slate-900 transition">FAQ</a>
-                </div>
-
-                <div class="flex items-center gap-3">
-                    @auth
-                        <a href="{{ route('dashboard') }}" class="text-sm font-medium text-slate-600 hover:text-slate-900 transition">Dashboard</a>
-                        <a href="{{ route('cv.create') }}"
-                            class="px-4 py-2 bg-indigo-500 text-white text-sm font-semibold rounded-lg hover:bg-indigo-600 transition shadow-sm shadow-indigo-200">
-                            + Tạo CV
-                        </a>
-                    @else
-                        <a href="{{ route('login') }}" class="text-sm font-medium text-slate-600 hover:text-slate-900 transition">Đăng nhập</a>
-                        <a href="{{ route('register') }}"
-                            class="px-4 py-2 bg-indigo-500 text-white text-sm font-semibold rounded-lg hover:bg-indigo-600 transition shadow-sm shadow-indigo-200">
-                            Dùng miễn phí
-                        </a>
-                    @endauth
-                </div>
-            </div>
-        </div>
-    </nav>
+    {{-- NAVBAR (shared partial từ layouts/navigation.blade.php) --}}
+    @include('layouts.navigation')
 
     {{-- HERO --}}
     <section class="hero-bg text-white pt-24 pb-32 px-6 relative overflow-hidden">

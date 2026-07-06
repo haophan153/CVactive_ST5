@@ -124,6 +124,7 @@ class JobApplicationController extends Controller
         ]);
     }
 
+
     // ============================================================
     // SECURE TEMPORARY SIGNED URL (Optional extra security)
     // ============================================================
