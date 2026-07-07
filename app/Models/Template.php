@@ -75,6 +75,17 @@ class Template extends Model
         return route('templates.preview', $this);
     }
 
+    /**
+     * Full URL cho thumbnail (hỗ trợ cả relative path lẫn absolute URL).
+     */
+    public function getThumbnailUrlAttribute(): ?string
+    {
+        $raw = $this->thumbnail;
+        if (! $raw) return null;
+        if (str_starts_with($raw, 'http')) return $raw;
+        return asset('storage/' . ltrim($raw, '/'));
+    }
+
     public function getColorStyleAttribute(): array
     {
         $map = [

@@ -2,12 +2,27 @@
 @section('title', 'Quản lý Blog')
 @section('page-title', 'Blog')
 
+@section('breadcrumb')
+<span class="text-gray-900 font-semibold">Blog</span>
+@endsection
+
 @section('content')
 
-<div class="flex items-center justify-between mb-5">
+<div x-data="{ selected: [], selectAll: false, applyBulk(action) {
+    if (this.selected.length === 0) { alert('Chọn ít nhất 1 bài viết.'); return; }
+    let msg = action === 'delete' ? 'Xóa ' + this.selected.length + ' bài viết?' : 'Cập nhật trạng thái cho ' + this.selected.length + ' bài viết?';
+    if (!confirm(msg)) return;
+    this.$refs.form.action.value = action;
+    this.$refs.form.submit();
+} }" x-init="$watch('selectAll', () => {
+    document.querySelectorAll('.post-checkbox').forEach(c => { c.checked = selectAll; });
+    this.selected = selectAll ? [...document.querySelectorAll('.post-checkbox')].map(c => c.value) : [];
+})">
+
+{{-- Toolbar --}}
+<div class="flex flex-wrap items-center justify-between gap-3 mb-5">
     <p class="text-sm text-gray-500">{{ $posts->total() }} bài viết</p>
-    <a href="{{ route('admin.blog.create') }}"
-        class="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition">
+    <a href="{{ route('admin.blog.create') }}" class="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
         <span>Viết bài mới</span>
     </a>
@@ -17,33 +32,83 @@
 <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-5">
     <form method="GET" class="flex flex-wrap gap-3 items-end">
         <div class="flex-1 min-w-48">
-            <input type="text" name="search" value="{{ request('search') }}" placeholder="Tìm tiêu đề..."
+            <label class="block text-xs font-medium text-gray-600 mb-1">Tìm kiếm</label>
+            <input type="text" name="search" value="{{ request('search') }}" placeholder="Tiêu đề..."
                 class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
         </div>
-        <select name="status" class="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-            <option value="">Tất cả trạng thái</option>
-            <option value="published" {{ request('status') === 'published' ? 'selected' : '' }}>Đã đăng</option>
-            <option value="draft" {{ request('status') === 'draft' ? 'selected' : '' }}>Nháp</option>
-        </select>
-        <select name="category" class="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-            <option value="">Tất cả danh mục</option>
-            @foreach($categories as $cat)
-            <option value="{{ $cat->id }}" {{ request('category') == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
-            @endforeach
-        </select>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Trạng thái</label>
+            <select name="status" class="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="">Tất cả</option>
+                <option value="published" {{ request('status') === 'published' ? 'selected' : '' }}>Đã đăng</option>
+                <option value="draft" {{ request('status') === 'draft' ? 'selected' : '' }}>Nháp</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Danh mục</label>
+            <select name="category" class="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="">Tất cả</option>
+                @foreach($categories as $cat)
+                <option value="{{ $cat->id }}" {{ request('category') == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Tác giả</label>
+            <select name="author" class="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="">Tất cả</option>
+                @foreach($authors as $a)
+                <option value="{{ $a->id }}" {{ request('author') == $a->id ? 'selected' : '' }}>{{ $a->name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Từ ngày</label>
+            <input type="date" name="from" value="{{ request('from') }}" class="text-sm border border-gray-300 rounded-lg px-3 py-2">
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Đến ngày</label>
+            <input type="date" name="to" value="{{ request('to') }}" class="text-sm border border-gray-300 rounded-lg px-3 py-2">
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Sắp xếp</label>
+            <select name="sort" class="text-sm border border-gray-300 rounded-lg px-3 py-2">
+                <option value="latest" {{ request('sort','latest')==='latest' ? 'selected' : '' }}>Mới nhất</option>
+                <option value="oldest" {{ request('sort')==='oldest' ? 'selected' : '' }}>Cũ nhất</option>
+                <option value="views"  {{ request('sort')==='views'  ? 'selected' : '' }}>Nhiều view</option>
+                <option value="title"  {{ request('sort')==='title'  ? 'selected' : '' }}>Tiêu đề A→Z</option>
+            </select>
+        </div>
         <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition">Lọc</button>
-        @if(request()->hasAny(['search','status','category']))
-        <a href="{{ route('admin.blog.index') }}" class="px-4 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 transition">Reset</a>
+        @if(request()->hasAny(['search','status','category','author','from','to','sort']))
+        <a href="{{ route('admin.blog.index') }}" class="px-4 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200">Reset</a>
         @endif
     </form>
 </div>
+
+{{-- Bulk bar --}}
+<form x-ref="form" method="POST" action="{{ route('admin.blog.bulk') }}" class="mb-4 flex items-center gap-2" x-show="selected.length > 0" x-cloak>
+    @csrf
+    <input type="hidden" name="action" value="">
+    <template x-for="id in selected" :key="id">
+        <input type="hidden" name="ids[]" :value="id">
+    </template>
+    <span class="text-sm text-gray-600" x-text="'Đã chọn ' + selected.length + ' bài:'"></span>
+    <button type="button" @click="applyBulk('publish')" class="px-3 py-1.5 text-sm bg-green-50 text-green-700 rounded-lg hover:bg-green-100">Đăng</button>
+    <button type="button" @click="applyBulk('unpublish')" class="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">Hủy đăng</button>
+    <button type="button" @click="applyBulk('delete')" class="px-3 py-1.5 text-sm bg-red-50 text-red-700 rounded-lg hover:bg-red-100">Xóa</button>
+    <button type="button" @click="selected = []; selectAll = false; document.querySelectorAll('.post-checkbox').forEach(c => c.checked = false)" class="ml-auto px-3 py-1.5 text-sm bg-gray-100 text-gray-600 rounded-lg">Bỏ chọn</button>
+</form>
 
 <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead class="bg-gray-50 border-b border-gray-100">
                 <tr>
-                    <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Bài viết</th>
+                    <th class="px-5 py-3 w-10">
+                        <input type="checkbox" x-model="selectAll" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                    </th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Bài viết</th>
                     <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Danh mục</th>
                     <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Tác giả</th>
                     <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Trạng thái</th>
@@ -55,6 +120,9 @@
                 @forelse($posts as $post)
                 <tr class="hover:bg-gray-50 transition">
                     <td class="px-5 py-3">
+                        <input type="checkbox" value="{{ $post->id }}" x-model="selected" class="post-checkbox rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                    </td>
+                    <td class="px-4 py-3">
                         <div class="flex items-center space-x-3">
                             @if($post->featured_image)
                             <img src="{{ asset('storage/'.$post->featured_image) }}" class="w-12 h-9 object-cover rounded flex-shrink-0">
@@ -81,7 +149,7 @@
                         <div class="flex items-center justify-end space-x-2">
                             @if($post->status === 'published')
                             <a href="{{ route('blog.show', $post->slug) }}" target="_blank"
-                                class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition" title="Xem trực tiếp">
+                                class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition" title="Xem">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
                             </a>
                             @endif
@@ -100,7 +168,7 @@
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="6" class="px-5 py-10 text-center text-gray-400">Chưa có bài viết nào.</td></tr>
+                <tr><td colspan="7" class="px-5 py-12 text-center text-gray-400">Chưa có bài viết nào.</td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -109,5 +177,5 @@
     <div class="px-5 py-4 border-t border-gray-100">{{ $posts->links() }}</div>
     @endif
 </div>
-
+</div>
 @endsection

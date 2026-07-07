@@ -11,11 +11,37 @@ use Illuminate\Support\Facades\Storage;
 
 class TemplateController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $templates  = Template::with('category')->latest()->paginate(15);
+        $query = Template::with('category')->latest();
+
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+
+        if ($request->filled('chip')) {
+            $query = match($request->chip) {
+                'premium'    => $query->where('is_premium', true),
+                'free'       => $query->where('is_premium', false),
+                'active'     => $query->where('is_active', true),
+                'inactive'   => $query->where('is_active', false),
+                default      => $query,
+            };
+        }
+
+        $view = $request->input('view', 'grid');
+
+        $templates  = $query->paginate($view === 'list' ? 25 : 18)->withQueryString();
         $categories = TemplateCategory::orderBy('name')->get();
-        return view('admin.templates.index', compact('templates', 'categories'));
+
+        $stats = [
+            'total'    => Template::count(),
+            'active'   => Template::where('is_active', true)->count(),
+            'premium'  => Template::where('is_premium', true)->count(),
+            'inactive' => Template::where('is_active', false)->count(),
+        ];
+
+        return view('admin.templates.index', compact('templates', 'categories', 'stats', 'view'));
     }
 
     public function create()
@@ -71,7 +97,6 @@ class TemplateController extends Controller
         $data['is_active']  = $request->boolean('is_active');
 
         if ($request->hasFile('thumbnail')) {
-            // Xóa thumbnail cũ
             if ($template->thumbnail && !str_starts_with($template->thumbnail, 'http')) {
                 $oldPath = str_replace(asset('storage/'), '', $template->thumbnail);
                 Storage::disk('public')->delete($oldPath);
@@ -92,5 +117,21 @@ class TemplateController extends Controller
 
         $template->delete();
         return redirect()->route('admin.templates.index')->with('success', 'Đã xóa template.');
+    }
+
+    public function toggle(Request $request, Template $template)
+    {
+        $request->validate([
+            'field' => 'required|in:is_premium,is_active',
+        ]);
+
+        $template->update([
+            $request->field => !$template->{$request->field},
+        ]);
+
+        return response()->json([
+            'ok'     => true,
+            'value'  => (bool) $template->fresh()->{$request->field},
+        ]);
     }
 }

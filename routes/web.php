@@ -98,16 +98,64 @@ Route::get('/payment/fail', fn() => view('payment.fail'))->name('payment.fail');
 // ── Admin routes ───────────────────────────────────────────────────────────
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
+
+    // Global search
+    Route::get('/search', \App\Http\Controllers\Admin\SearchController::class)->name('search');
+
+    // Users
     Route::resource('users', \App\Http\Controllers\Admin\UserController::class)->except(['create', 'store']);
+    Route::patch('users/{user}/quick', [\App\Http\Controllers\Admin\UserController::class, 'quickUpdate'])->name('users.quick');
+    Route::post('users/bulk', [\App\Http\Controllers\Admin\UserController::class, 'bulk'])->name('users.bulk');
+    Route::get('users-export', [\App\Http\Controllers\Admin\UserController::class, 'export'])->name('users.export');
+
+    // Templates
     Route::resource('templates', \App\Http\Controllers\Admin\TemplateController::class)->except(['show']);
+    Route::patch('templates/{template}/toggle', [\App\Http\Controllers\Admin\TemplateController::class, 'toggle'])->name('templates.toggle');
+
+    // Blog
     Route::resource('blog', \App\Http\Controllers\Admin\BlogController::class)->except(['show']);
+    Route::post('blog/bulk', [\App\Http\Controllers\Admin\BlogController::class, 'bulk'])->name('blog.bulk');
+
+    // Blog Categories
+    Route::resource('blog-categories', \App\Http\Controllers\Admin\BlogCategoryController::class)
+        ->except(['show'])
+        ->parameters(['blog-categories' => 'blogCategory']);
+
+    // FAQ
+    Route::resource('faqs', \App\Http\Controllers\Admin\FaqController::class)->except(['show']);
+    Route::patch('faqs/{faq}/toggle', [\App\Http\Controllers\Admin\FaqController::class, 'toggle'])->name('faqs.toggle');
+    Route::post('faqs/bulk', [\App\Http\Controllers\Admin\FaqController::class, 'bulk'])->name('faqs.bulk');
+
+    // Payments
     Route::get('payments', [\App\Http\Controllers\Admin\PaymentController::class, 'index'])->name('payments.index');
     Route::patch('payments/{payment}/status', [\App\Http\Controllers\Admin\PaymentController::class, 'updateStatus'])->name('payments.status');
+    Route::post('payments/bulk-status', [\App\Http\Controllers\Admin\PaymentController::class, 'bulkStatus'])->name('payments.bulk-status');
+    Route::get('payments-export', [\App\Http\Controllers\Admin\PaymentController::class, 'export'])->name('payments.export');
+
+    // Plans
+    Route::resource('plans', \App\Http\Controllers\Admin\PlanController::class)->except(['show']);
+    Route::patch('plans/{plan}/toggle', [\App\Http\Controllers\Admin\PlanController::class, 'toggle'])->name('plans.toggle');
+
+    // Job Posts (admin overview)
+    Route::get('job-posts', [\App\Http\Controllers\Admin\JobPostController::class, 'index'])->name('job-posts.index');
+    Route::get('job-posts/{jobPost}', [\App\Http\Controllers\Admin\JobPostController::class, 'show'])->name('job-posts.show');
+    Route::patch('job-posts/{jobPost}/toggle', [\App\Http\Controllers\Admin\JobPostController::class, 'toggle'])->name('job-posts.toggle');
+    Route::delete('job-posts/{jobPost}', [\App\Http\Controllers\Admin\JobPostController::class, 'destroy'])->name('job-posts.destroy');
+
+    // Contacts
+    Route::resource('contacts', \App\Http\Controllers\Admin\ContactController::class)->only(['index', 'show', 'destroy']);
+    Route::patch('contacts/{contact}/toggle-read', [\App\Http\Controllers\Admin\ContactController::class, 'toggleRead'])->name('contacts.toggle-read');
+    Route::post('contacts/bulk', [\App\Http\Controllers\Admin\ContactController::class, 'bulk'])->name('contacts.bulk');
+
+    // Settings
+    Route::get('settings', [\App\Http\Controllers\Admin\SettingController::class, 'index'])->name('settings.index');
+    Route::post('settings', [\App\Http\Controllers\Admin\SettingController::class, 'update'])->name('settings.update');
 });
 
 // ── HR routes ──────────────────────────────────────────────────────────────
 Route::middleware(['auth', 'hr'])->prefix('hr')->name('hr.')->group(function () {
     Route::get('/job-posts', [JobPostController::class, 'index'])->name('job-posts.index');
+    Route::get('/job-posts/heartbeat', [JobPostController::class, 'heartbeat'])->name('job-posts.heartbeat');
     Route::get('/job-posts/create', [JobPostController::class, 'create'])->name('job-posts.create');
     Route::post('/job-posts', [JobPostController::class, 'store'])->name('job-posts.store');
     Route::get('/job-posts/{jobPost}', [JobPostController::class, 'show'])->name('job-posts.show');
@@ -144,6 +192,12 @@ Route::middleware(['auth', 'hr'])->prefix('hr')->name('hr.')->group(function () 
     Route::get('/applications/{application}/cv-url', [App\Http\Controllers\JobApplicationController::class, 'getSignedUrl'])
         ->name('applications.cv.url')
         ->middleware('auth');
+
+    // AI CV Scoring
+    Route::post('/job-posts/{jobPost}/ai-score', [App\Http\Controllers\Hr\AiScoreController::class, 'bulkScore'])
+        ->name('job-posts.ai-score');
+    Route::post('/applications/{application}/rescore', [App\Http\Controllers\Hr\AiScoreController::class, 'rescore'])
+        ->name('applications.rescore');
 });
 
 // Public job listings (advanced filter page)

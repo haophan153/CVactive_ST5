@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Models\JobPost;
 
 class JobPostController extends Controller
@@ -12,13 +13,115 @@ class JobPostController extends Controller
         $query = JobPost::with('user')
             ->where('user_id', auth()->id());
 
-        if ($request->status) {
-            $query->where('status', $request->status);
+        // Free-text search
+        if ($request->filled('q')) {
+            $term = trim((string) $request->q);
+            $query->where(function ($q) use ($term) {
+                $q->whereRaw('LOWER(title) LIKE ?', ['%'.mb_strtolower($term).'%'])
+                  ->orWhereRaw('LOWER(company_name) LIKE ?', ['%'.mb_strtolower($term).'%'])
+                  ->orWhereRaw('LOWER(location) LIKE ?', ['%'.mb_strtolower($term).'%']);
+            });
         }
 
-        $jobPosts = $query->latest()->paginate(10);
+        // Filters
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        if ($request->filled('job_type')) {
+            $query->where('job_type', $request->job_type);
+        }
+        if ($request->filled('category')) {
+            $query->where('category', $request->category);
+        }
+        if ($request->filled('is_hot')) {
+            $query->where('is_hot', true);
+        }
+        if ($request->filled('is_remote')) {
+            $query->where('is_remote', true);
+        }
 
-        return view('hr.job-posts.index', compact('jobPosts'));
+        // Sort
+        switch ($request->input('sort', 'newest')) {
+            case 'oldest':       $query->oldest(); break;
+            case 'title_asc':    $query->orderBy('title'); break;
+            case 'title_desc':   $query->orderByDesc('title'); break;
+            case 'most_applied': $query->withCount('applications')->orderByDesc('applications_count'); break;
+            case 'most_viewed':  $query->orderByDesc('views_count'); break;
+            case 'newest':       $query->latest('published_at')->latest(); break;
+            default:             $query->latest();
+        }
+
+        $jobPosts = $query->paginate(12)->withQueryString();
+
+        // Aggregate stats for dashboard header (all of the HR's posts, ignoring filters)
+        $allPosts = JobPost::where('user_id', auth()->id())->withCount('applications');
+        $stats = [
+            'total'        => (clone $allPosts)->count(),
+            'published'    => (clone $allPosts)->where('status', 'published')->count(),
+            'drafts'       => (clone $allPosts)->where('status', 'draft')->count(),
+            'closed'       => (clone $allPosts)->where('status', 'closed')->count(),
+            'applications' => (clone $allPosts)->get()->sum('applications_count'),
+            'views'        => (clone $allPosts)->sum('views_count'),
+            'hot'          => (clone $allPosts)->where('is_hot', true)->count(),
+            'remote'       => (clone $allPosts)->where('is_remote', true)->count(),
+            'expiring'     => (clone $allPosts)
+                                  ->where('status', 'published')
+                                  ->whereNotNull('expires_at')
+                                  ->whereBetween('expires_at', [now(), now()->addDays(7)])
+                                  ->count(),
+        ];
+
+        // Last 14 days applications chart (across all HR posts)
+        $start = now()->subDays(13)->startOfDay();
+        $applicationsByDay = \App\Models\JobApplication::query()
+            ->whereHas('jobPost', fn ($q) => $q->where('user_id', auth()->id()))
+            ->select(DB::raw('DATE(applied_at) as d'), DB::raw('COUNT(*) as c'))
+            ->where('applied_at', '>=', $start)
+            ->groupBy('d')
+            ->pluck('c', 'd');
+
+        $timeline = collect(range(13, 0))->map(function ($ago) use ($applicationsByDay) {
+            $date = now()->subDays($ago)->format('Y-m-d');
+            return (object) ['date' => $date, 'count' => (int) ($applicationsByDay[$date] ?? 0)];
+        });
+
+        return view('hr.job-posts.index', [
+            'jobPosts'    => $jobPosts,
+            'stats'       => $stats,
+            'timeline'    => $timeline,
+            'categories'  => JobPost::CATEGORIES,
+            'jobTypes'    => JobPost::JOB_TYPES,
+            'filters'     => $request->only(['q', 'status', 'job_type', 'category', 'is_hot', 'is_remote', 'sort']),
+        ]);
+    }
+
+    /**
+     * Realtime dashboard heartbeat (JSON).
+     */
+    public function heartbeat(): \Illuminate\Http\JsonResponse
+    {
+        $base = JobPost::where('user_id', auth()->id())->withCount('applications');
+        $apps = (clone $base)->get()->sum('applications_count');
+
+        return response()->json([
+            'stats' => [
+                'total'        => (clone $base)->count(),
+                'published'    => (clone $base)->where('status', 'published')->count(),
+                'drafts'       => (clone $base)->where('status', 'draft')->count(),
+                'closed'       => (clone $base)->where('status', 'closed')->count(),
+                'applications' => $apps,
+                'views'        => (clone $base)->sum('views_count'),
+                'hot'          => (clone $base)->where('is_hot', true)->count(),
+                'remote'       => (clone $base)->where('is_remote', true)->count(),
+                'expiring'     => (clone $base)
+                                       ->where('status', 'published')
+                                       ->whereNotNull('expires_at')
+                                       ->whereBetween('expires_at', [now(), now()->addDays(7)])
+                                       ->count(),
+                'updated_at'   => optional((clone $base)->max('updated_at'))->toIso8601String(),
+            ],
+            'server_ts' => now()->toIso8601String(),
+        ])->header('Cache-Control', 'no-store');
     }
 
     public function create()
@@ -63,11 +166,35 @@ class JobPostController extends Controller
             ->with('success', 'Bài đăng đã được tạo thành công!');
     }
 
-    public function show(JobPost $jobPost)
+    public function show(Request $request, JobPost $jobPost)
     {
         $this->authorizeJobPost($jobPost);
 
-        return view('hr.job-posts.show', compact('jobPost'));
+        $jobPost->loadCount('applications');
+        $jobPost->load(['applications' => function ($q) {
+            $q->latest('applied_at')->limit(8);
+        }, 'applications.user']);
+
+        // Aggregate counts by application status
+        $appStats = [
+            'total'     => $jobPost->applications()->count(),
+            'pending'   => $jobPost->applications()->where('status', 'pending')->count(),
+            'reviewing' => $jobPost->applications()->where('status', 'reviewing')->count(),
+            'approved'  => $jobPost->applications()->where('status', 'approved')->count(),
+            'rejected'  => $jobPost->applications()->where('status', 'rejected')->count(),
+        ];
+
+        // 14-day views (using last_saved_at as proxy if not tracked)
+        $days = collect(range(13, 0))->map(function ($ago) {
+            $date = now()->subDays($ago)->format('Y-m-d');
+            return (object) ['date' => $date, 'count' => 0];
+        });
+
+        return view('hr.job-posts.show', [
+            'jobPost'   => $jobPost,
+            'appStats'  => $appStats,
+            'daysChart' => $days,
+        ]);
     }
 
     public function edit(JobPost $jobPost)
