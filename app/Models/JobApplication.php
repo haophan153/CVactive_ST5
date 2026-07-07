@@ -20,11 +20,18 @@ class JobApplication extends Model
         'cover_letter',
         'status',
         'notes',
+        'ai_score',
+        'ai_summary',
+        'ai_breakdown',
+        'ai_scored_at',
         'applied_at',
     ];
 
     protected $casts = [
-        'applied_at' => 'datetime',
+        'applied_at'   => 'datetime',
+        'ai_scored_at' => 'datetime',
+        'ai_breakdown' => 'array',
+        'ai_score'     => 'integer',
     ];
 
     /**
@@ -65,6 +72,52 @@ class JobApplication extends Model
     public function scopeByJobPost($query, $jobPostId)
     {
         return $query->where('job_post_id', $jobPostId);
+    }
+
+    /**
+     * Scope: Lọc đơn đã được AI chấm điểm
+     */
+    public function scopeScored($query)
+    {
+        return $query->whereNotNull('ai_score');
+    }
+
+    /**
+     * Scope: Lọc đơn CHƯA được AI chấm điểm
+     */
+    public function scopeUnscored($query)
+    {
+        return $query->whereNull('ai_score');
+    }
+
+    /**
+     * Accessor: Nhãn điểm AI hiển thị + màu sắc
+     * Trả về ['label' => '92/100', 'color' => 'bg-emerald-100 text-emerald-700', 'text' => 'emerald']
+     */
+    public function getAiScoreLabelAttribute(): array
+    {
+        if ($this->ai_score === null) {
+            return ['label' => null, 'color' => 'bg-gray-100 text-gray-500', 'text' => 'gray'];
+        }
+
+        $score = (int) $this->ai_score;
+
+        if ($score >= 70) {
+            $color = 'bg-emerald-100 text-emerald-700';
+            $text  = 'emerald';
+        } elseif ($score >= 40) {
+            $color = 'bg-amber-100 text-amber-700';
+            $text  = 'amber';
+        } else {
+            $color = 'bg-red-100 text-red-700';
+            $text  = 'red';
+        }
+
+        return [
+            'label' => $score . '/100',
+            'color' => $color,
+            'text'  => $text,
+        ];
     }
 
     /**

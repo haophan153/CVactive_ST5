@@ -27,10 +27,26 @@ class BlogController extends Controller
             $query->where('category_id', $request->category);
         }
 
+        if ($request->filled('author')) {
+            $query->where('author_id', $request->author);
+        }
+
+        if ($request->filled('from')) $query->whereDate('created_at', '>=', $request->from);
+        if ($request->filled('to'))   $query->whereDate('created_at', '<=', $request->to);
+
+        $sort = $request->input('sort', 'latest');
+        $query = match($sort) {
+            'oldest'    => $query->orderBy('created_at', 'asc'),
+            'views'     => $query->orderByDesc('views_count'),
+            'title'     => $query->orderBy('title', 'asc'),
+            default     => $query->orderBy('created_at', 'desc'),
+        };
+
         $posts      = $query->paginate(15)->withQueryString();
         $categories = BlogCategory::orderBy('name')->get();
+        $authors    = \App\Models\User::orderBy('name')->limit(50)->get();
 
-        return view('admin.blog.index', compact('posts', 'categories'));
+        return view('admin.blog.index', compact('posts', 'categories', 'authors'));
     }
 
     public function create()
@@ -108,5 +124,40 @@ class BlogController extends Controller
         }
         $blog->delete();
         return redirect()->route('admin.blog.index')->with('success', 'Đã xóa bài viết.');
+    }
+
+    public function bulk(Request $request)
+    {
+        $request->validate([
+            'action' => 'required|in:publish,unpublish,delete',
+            'ids'    => 'required|array|min:1',
+            'ids.*'  => 'integer|exists:blog_posts,id',
+        ]);
+
+        $ids = $request->ids;
+
+        if ($request->action === 'delete') {
+            BlogPost::whereIn('id', $ids)->get()->each(function ($p) {
+                if ($p->featured_image) Storage::disk('public')->delete($p->featured_image);
+                $p->delete();
+            });
+            return back()->with('success', 'Đã xóa ' . count($ids) . ' bài viết.');
+        }
+
+        if ($request->action === 'publish') {
+            BlogPost::whereIn('id', $ids)->update([
+                'status' => 'published',
+                'published_at' => now(),
+            ]);
+            return back()->with('success', 'Đã đăng ' . count($ids) . ' bài viết.');
+        }
+
+        if ($request->action === 'unpublish') {
+            BlogPost::whereIn('id', $ids)->update([
+                'status' => 'draft',
+                'published_at' => null,
+            ]);
+            return back()->with('success', 'Đã hủy đăng ' . count($ids) . ' bài viết.');
+        }
     }
 }

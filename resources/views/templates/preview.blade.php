@@ -146,7 +146,7 @@
                 </div>
 
                 {{-- CTA --}}
-                <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 text-white p-6">
+                <div class="relative overflow-hidden rounded-2xl bg-[#0F172A] text-white p-6">
                     <div class="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
                     <div class="relative">
                         <h3 class="text-lg font-bold leading-tight">
