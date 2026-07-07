@@ -5,20 +5,24 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'Laravel') }}</title>
+        <title>@yield('title', 'CVactive') — Tạo CV chuyên nghiệp online</title>
+        <meta name="description" content="@yield('description', 'Tạo CV đẹp, chuyên nghiệp trong vài phút. Hàng chục mẫu CV miễn phí, xuất PDF, chia sẻ link ngay.')">
 
-        <!-- Fonts -->
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+        <!-- Fonts: Inter (đồng bộ với trang home) -->
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+        @stack('styles')
     </head>
-    <body class="font-sans antialiased">
-        <div class="min-h-screen bg-gray-100">
+    <body class="bg-white text-slate-900 antialiased" style="font-family: 'Inter', sans-serif;">
+        <div class="min-h-screen">
             @include('layouts.navigation')
 
-            <!-- Page Heading -->
+            <!-- Page Heading (optional - chỉ hiện khi trang truyền $header) -->
             @isset($header)
                 <header class="bg-white shadow">
                     <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -48,5 +52,7 @@
                 @endif
             </main>
         </div>
+
+        @stack('scripts')
     </body>
 </html>

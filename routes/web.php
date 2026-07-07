@@ -2,8 +2,10 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CvController;
+use App\Http\Controllers\FaqController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\JobPostController;
+use App\Http\Controllers\JobListingController;
 use Illuminate\Support\Facades\Route;
 
 // ── Public routes ──────────────────────────────────────────────────────────
@@ -22,10 +24,7 @@ Route::get('/contact', function () {
 
 Route::post('/contact', [\App\Http\Controllers\ContactController::class, 'store'])->name('contact.store');
 
-Route::get('/faq', function () {
-    $faqs = \App\Models\Faq::where('is_active', true)->orderBy('sort_order')->get();
-    return view('faq', compact('faqs'));
-})->name('faq');
+Route::get('/faq', [FaqController::class, 'index'])->name('faq');
 
 Route::get('/blog', [\App\Http\Controllers\BlogController::class, 'index'])->name('blog.index');
 Route::get('/blog/{slug}', [\App\Http\Controllers\BlogController::class, 'show'])->name('blog.show');
@@ -146,9 +145,9 @@ Route::middleware(['auth', 'hr'])->prefix('hr')->name('hr.')->group(function () 
         ->middleware('auth');
 });
 
-// Public job listings
-Route::get('/jobs', [JobPostController::class, 'publicIndex'])->name('jobs.index');
-Route::get('/jobs/{jobPost}', [JobPostController::class, 'publicShow'])->name('jobs.show');
+// Public job listings (advanced filter page)
+Route::get('/jobs', [JobListingController::class, 'index'])->name('jobs.index');
+Route::get('/jobs/{jobPost}', [JobListingController::class, 'show'])->name('jobs.show');
 Route::post('/jobs/{jobPost}/apply', [App\Http\Controllers\JobApplicationController::class, 'apply'])->name('jobs.apply');
 
 // User routes - lịch sử ứng tuyển
