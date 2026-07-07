@@ -124,7 +124,7 @@
                         @elseif(request('category'))
                             {{ $categories->firstWhere('slug', request('category'))?->name }}
                         @endif
-                        <span class="font-semibold text-slate-800 ml-1">{{ $templates->total() }}</span> mẫu
+                        <span class="font-semibold text-slate-800 ml-1">{{ optional($templates)->total() }}</span> mẫu
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
                         <div class="flex bg-slate-100 rounded-xl p-0.5">
@@ -149,7 +149,7 @@
                 </div>
 
                 {{-- Grid --}}
-                @if($templates->isEmpty())
+                @if(optional($templates)->isEmpty())
                 <div class="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
                     <div class="w-16 h-16 mx-auto bg-slate-50 rounded-full flex items-center justify-center mb-4">
                         <svg class="w-8 h-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002 2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
@@ -162,7 +162,7 @@
                 <div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
                     @foreach($templates as $template)
                         @php $colors = $template->color_style; @endphp
-                        <article class="group bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition" style="transition:transform 0.2s cubic-bezier(0.16,1,0.3,1),box-shadow 0.2s ease">
+                        <article class="group relative bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200" style="transition-timing-function:cubic-bezier(0.16,1,0.3,1)">
                             @if($template->is_premium)
                                 <div class="absolute top-3 left-3 z-20">
                                     <span class="inline-flex items-center gap-1 bg-amber-400 text-indigo-950 text-[10px] font-bold px-2.5 py-1 rounded-full shadow-lg">
@@ -248,9 +248,11 @@
                             </div>
                         </article>
                     @endforeach
+                    @php /** @var \Illuminate\Pagination\LengthAwarePaginator $templates */ @endphp
+                    @if($templates->hasPages())
+                        <div class="mt-8 col-span-full">{{ $templates->links() }}</div>
+                    @endif
                 </div>
-
-                <div class="mt-8">{{ $templates->links() }}</div>
                 @endif
             </div>
         </div>
