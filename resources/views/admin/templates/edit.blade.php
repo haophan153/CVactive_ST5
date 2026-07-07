@@ -37,7 +37,7 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Thumbnail hiện tại</label>
                 @if($template->thumbnail)
-                <img src="{{ $template->thumbnail }}" class="h-24 rounded-lg object-cover border border-gray-200 mb-2">
+                <img src="{{ $template->thumbnail_url }}" class="h-24 rounded-lg object-cover border border-gray-200 mb-2">
                 @else
                 <p class="text-sm text-gray-400 mb-2">Chưa có thumbnail.</p>
                 @endif

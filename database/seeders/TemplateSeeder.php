@@ -33,6 +33,7 @@ class TemplateSeeder extends Seeder
                 'theme_color' => '#4F46E5', 'color' => 'indigo',
                 'blade_view' => 'cv-templates.classic-blue',
                 'usage' => 3421,
+                'image' => 'https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=900&q=80&auto=format&fit=crop',
             ],
             [
                 'name'   => 'Developer Dark', 'slug' => 'developer-dark',
@@ -40,6 +41,7 @@ class TemplateSeeder extends Seeder
                 'theme_color' => '#1e293b', 'color' => 'slate',
                 'blade_view' => 'cv-templates.modern-dark',
                 'usage' => 2890,
+                'image' => 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=900&q=80&auto=format&fit=crop',
             ],
             [
                 'name'   => 'Code Minimal', 'slug' => 'code-minimal',
@@ -47,6 +49,7 @@ class TemplateSeeder extends Seeder
                 'theme_color' => '#10b981', 'color' => 'emerald',
                 'blade_view' => 'cv-templates.minimal-white',
                 'usage' => 1567,
+                'image' => 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=900&q=80&auto=format&fit=crop',
             ],
             // ── Kinh doanh ─────────────────────────────────
             [
@@ -55,6 +58,7 @@ class TemplateSeeder extends Seeder
                 'theme_color' => '#0f766e', 'color' => 'teal',
                 'blade_view' => 'cv-templates.classic-blue',
                 'usage' => 2103,
+                'image' => 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=900&q=80&auto=format&fit=crop',
             ],
             [
                 'name'   => 'Sales Star', 'slug' => 'sales-star',
@@ -62,6 +66,7 @@ class TemplateSeeder extends Seeder
                 'theme_color' => '#f59e0b', 'color' => 'amber',
                 'blade_view' => 'cv-templates.modern-dark',
                 'usage' => 1342,
+                'image' => 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=900&q=80&auto=format&fit=crop',
             ],
             // ── Sáng tạo ───────────────────────────────────
             [
@@ -70,6 +75,7 @@ class TemplateSeeder extends Seeder
                 'theme_color' => '#e11d48', 'color' => 'rose',
                 'blade_view' => 'cv-templates.minimal-white',
                 'usage' => 987,
+                'image' => 'https://images.unsplash.com/photo-1626785774573-4b799315345d?w=900&q=80&auto=format&fit=crop',
             ],
             [
                 'name'   => 'Design Portfolio', 'slug' => 'design-portfolio',
@@ -77,6 +83,7 @@ class TemplateSeeder extends Seeder
                 'theme_color' => '#7c3aed', 'color' => 'violet',
                 'blade_view' => 'cv-templates.modern-dark',
                 'usage' => 876,
+                'image' => 'https://images.unsplash.com/photo-1542038784456-1ea8e935640e?w=900&q=80&auto=format&fit=crop',
             ],
             // ── Hành chính ─────────────────────────────────
             [
@@ -85,6 +92,7 @@ class TemplateSeeder extends Seeder
                 'theme_color' => '#0369a1', 'color' => 'sky',
                 'blade_view' => 'cv-templates.classic-blue',
                 'usage' => 654,
+                'image' => 'https://images.unsplash.com/photo-1499914485622-a88fac536970?w=900&q=80&auto=format&fit=crop',
             ],
             [
                 'name'   => 'HR Manager', 'slug' => 'hr-manager',
@@ -92,6 +100,7 @@ class TemplateSeeder extends Seeder
                 'theme_color' => '#0891b2', 'color' => 'teal',
                 'blade_view' => 'cv-templates.modern-dark',
                 'usage' => 543,
+                'image' => 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=900&q=80&auto=format&fit=crop',
             ],
             // ── Chuyên nghiệp ───────────────────────────────
             [
@@ -100,6 +109,7 @@ class TemplateSeeder extends Seeder
                 'theme_color' => '#1f2937', 'color' => 'slate',
                 'blade_view' => 'cv-templates.classic-blue',
                 'usage' => 4532,
+                'image' => 'https://images.unsplash.com/photo-1589994965851-a8f479c573a9?w=900&q=80&auto=format&fit=crop',
             ],
             [
                 'name'   => 'Modern Standard', 'slug' => 'modern-standard',
@@ -107,6 +117,7 @@ class TemplateSeeder extends Seeder
                 'theme_color' => '#4338ca', 'color' => 'indigo',
                 'blade_view' => 'cv-templates.minimal-white',
                 'usage' => 3210,
+                'image' => 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=900&q=80&auto=format&fit=crop',
             ],
             [
                 'name'   => 'Elite Executive', 'slug' => 'elite-executive',
@@ -114,10 +125,31 @@ class TemplateSeeder extends Seeder
                 'theme_color' => '#ca8a04', 'color' => 'amber',
                 'blade_view' => 'cv-templates.modern-dark',
                 'usage' => 2109,
+                'image' => 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=900&q=80&auto=format&fit=crop',
             ],
         ];
 
         foreach ($templates as $t) {
+            $imagePath = null;
+
+            if (! empty($t['image'])) {
+                try {
+                    $response = \Illuminate\Support\Facades\Http::timeout(15)->get($t['image']);
+                    if ($response->successful()) {
+                        \Illuminate\Support\Facades\Storage::disk('public')->makeDirectory('templates');
+                        $ext = strtolower(pathinfo(parse_url($t['image'], PHP_URL_PATH) ?? '', PATHINFO_EXTENSION));
+                        if (! in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+                            $ext = 'jpg';
+                        }
+                        $filename = $t['slug'] . '-' . substr(md5($t['slug']), 0, 6) . '.' . $ext;
+                        \Illuminate\Support\Facades\Storage::disk('public')->put('templates/' . $filename, $response->body());
+                        $imagePath = 'templates/' . $filename;
+                    }
+                } catch (\Throwable $e) {
+                    // ignore – leave null
+                }
+            }
+
             Template::updateOrCreate(
                 ['slug' => $t['slug']],
                 [
@@ -129,7 +161,7 @@ class TemplateSeeder extends Seeder
                     'is_premium'    => $t['is_premium'],
                     'is_active'     => true,
                     'usage_count'   => $t['usage'],
-                    'thumbnail'     => null,
+                    'thumbnail'     => $imagePath,
                 ]
             );
         }

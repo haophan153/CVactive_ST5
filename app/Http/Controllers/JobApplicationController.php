@@ -338,7 +338,7 @@ class JobApplicationController extends Controller
      */
     public function hrApplicationsByJob(Request $request, JobPost $jobPost)
     {
-        $user = auth()->user();
+        $user = $request->user();
 
         // Eager load user để tránh lazy-load khi check authorization
         $jobPost->loadMissing('user');
@@ -362,7 +362,19 @@ class JobApplicationController extends Controller
             });
         }
 
-        $applications = $query->latest('applied_at')->paginate(15);
+        // Sắp xếp: mặc định mới nhất; ?sort=ai => điểm AI cao → thấp (null cuối)
+        $sort = $request->get('sort', 'newest');
+        if ($sort === 'ai') {
+            $query->orderByRaw('ai_score IS NULL ASC')
+                ->orderByDesc('ai_score')
+                ->orderByDesc('applied_at');
+        } elseif ($sort === 'oldest') {
+            $query->orderBy('applied_at', 'asc');
+        } else {
+            $query->latest('applied_at');
+        }
+
+        $applications = $query->paginate(15)->withQueryString();
 
         return view('hr.applications.by-job', compact('applications', 'jobPost'));
     }
