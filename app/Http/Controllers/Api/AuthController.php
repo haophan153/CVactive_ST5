@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class AuthController extends ApiController
 {
@@ -37,22 +38,35 @@ class AuthController extends ApiController
     }
 
     /**
-     * Login user.
+     * Login user (constant-time).
      *
      * POST /api/auth/login
+     * L-2: chống timing attack email enumeration.
+     *   - Email không tồn tại: vẫn chạy bcrypt giả với cùng cost
+     *   - User bị khóa / email_verified_at null: trả cùng thông báo
+     *     "Email hoặc mật khẩu không đúng" để không leak trạng thái.
      */
     public function login(LoginRequest $request): JsonResponse
     {
-        if (!Auth::attempt($request->only('email', 'password'))) {
-            return $this->error('Email hoặc mật khẩu không đúng.', 401);
+        $email = $request->input('email');
+        $password = $request->input('password');
+        $genericError = 'Email hoặc mật khẩu không đúng.';
+
+        // L-2: lookup user FIRST để biết có tồn tại hay không
+        $user = User::where('email', $email)->first();
+
+        if (! $user) {
+            // Chạy bcrypt giả để timing gần như nhau
+            Hash::check($password, '$2y$12$' . Str::random(53));
+            return $this->error($genericError, 401);
         }
 
-        $user = User::where('email', $request->email)->first();
-
-        if (!$user) {
-            return $this->error('Email hoặc mật khẩu không đúng.', 401);
+        // Check password
+        if (! Hash::check($password, $user->password)) {
+            return $this->error($genericError, 401);
         }
 
+        // Cập nhật last login + tạo token
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return $this->success([

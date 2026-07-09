@@ -72,7 +72,7 @@ class TemplateController extends Controller
         $cv = new \App\Models\Cv([
             'title'       => 'CV Mẫu – ' . $template->name,
             'theme_color' => $template->theme_color ?? '#4F46E5',
-            'font_family' => 'Inter',
+            'font_family' => $template->font_family ?? 'Inter',
             'objective'   => 'Mục tiêu nghề nghiệp ngắn gọn: mong muốn đóng góp vào đội ngũ phát triển sản phẩm và học hỏi thêm kinh nghiệm trong môi trường chuyên nghiệp.',
             'personal_info' => [
                 'full_name' => 'Nguyễn Văn Mẫu',

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
+use App\Models\PaymentStatusLog;
 use App\Models\Plan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -40,7 +41,6 @@ class PaymentController extends Controller
         $revenueStats['conversion'] = $totalAttempts > 0 ? round($completedCount / $totalAttempts * 100, 1) : 0;
         $revenueStats['avg']        = $completedCount > 0 ? round($revenueStats['total'] / $completedCount) : 0;
 
-        // Monthly revenue (last 6 months) - kèm highlight current
         $monthlyRevenue = Payment::select(
                 DB::raw('DATE_FORMAT(created_at, "%Y-%m") as month'),
                 DB::raw('SUM(amount) as total'),
@@ -62,7 +62,6 @@ class PaymentController extends Controller
             ];
         });
 
-        // Top plans
         $topPlans = Payment::select('plan_id', DB::raw('COUNT(*) as count'), DB::raw('SUM(amount) as revenue'))
             ->where('status', 'completed')
             ->whereNotNull('plan_id')
@@ -77,23 +76,75 @@ class PaymentController extends Controller
         ));
     }
 
+    /**
+     * H-6: Status update + audit log + reason required.
+     */
     public function updateStatus(Request $request, Payment $payment)
     {
-        $request->validate(['status' => 'required|in:pending,completed,failed,refunded']);
-        $payment->update(['status' => $request->status]);
-        return back()->with('success', 'Đã cập nhật trạng thái thanh toán.');
+        $validated = $request->validate([
+            'status' => 'required|in:pending,completed,failed,refunded',
+            // Bắt buộc nhập lý do — chống admin abuse flip lung tung
+            'reason' => 'required|string|min:10|max:500',
+        ]);
+
+        $admin = $request->user();
+
+        DB::transaction(function () use ($payment, $validated, $admin, $request) {
+            $oldStatus = $payment->status;
+
+            $payment->update(['status' => $validated['status']]);
+
+            PaymentStatusLog::create([
+                'payment_id' => $payment->id,
+                'admin_id'   => $admin->id,
+                'old_status' => $oldStatus,
+                'new_status' => $validated['status'],
+                'reason'     => $validated['reason'],
+                'ip'         => $request->ip(),
+                'user_agent' => substr((string) $request->userAgent(), 0, 255),
+                'created_at' => now(),
+            ]);
+        });
+
+        return back()->with('success', 'Đã cập nhật trạng thái thanh toán (audit log saved).');
     }
 
+    /**
+     * H-6: Bulk status update — yêu cầu reason + ghi log từng payment.
+     */
     public function bulkStatus(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'status' => 'required|in:pending,completed,failed,refunded',
             'ids'    => 'required|array|min:1',
             'ids.*'  => 'integer|exists:payments,id',
+            'reason' => 'required|string|min:10|max:500',
         ]);
 
-        Payment::whereIn('id', $request->ids)->update(['status' => $request->status]);
-        return back()->with('success', 'Đã cập nhật ' . count($request->ids) . ' giao dịch.');
+        $admin    = $request->user();
+        $oldById  = Payment::whereIn('id', $validated['ids'])->pluck('status', 'id');
+
+        DB::transaction(function () use ($validated, $admin, $request, $oldById) {
+            Payment::whereIn('id', $validated['ids'])->update(['status' => $validated['status']]);
+
+            $logs = [];
+            $now  = now();
+            foreach ($validated['ids'] as $id) {
+                $logs[] = [
+                    'payment_id' => $id,
+                    'admin_id'   => $admin->id,
+                    'old_status' => $oldById[$id] ?? null,
+                    'new_status' => $validated['status'],
+                    'reason'     => $validated['reason'],
+                    'ip'         => $request->ip(),
+                    'user_agent' => substr((string) $request->userAgent(), 0, 255),
+                    'created_at' => $now,
+                ];
+            }
+            PaymentStatusLog::insert($logs);
+        });
+
+        return back()->with('success', 'Đã cập nhật ' . count($validated['ids']) . ' giao dịch (audit log saved).');
     }
 
     public function export(Request $request)

@@ -39,6 +39,9 @@ class ProfileController extends Controller
 
     /**
      * Upload user avatar.
+     *
+     * Replaces any previous avatar (uploaded file or downloaded Google avatar).
+     * Remote URLs are never deleted — only the local path stored in the user's record.
      */
     public function uploadAvatar(Request $request): RedirectResponse
     {
@@ -48,8 +51,8 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
-        // Xoá avatar cũ nếu không phải Google avatar
-        if ($user->avatar && !str_starts_with($user->avatar, 'http')) {
+        // Capture old local file BEFORE overwriting — never delete URLs from third parties.
+        if ($user->avatar && ! $user->avatar_is_remote) {
             \Illuminate\Support\Facades\Storage::disk('public')->delete($user->avatar);
         }
 
@@ -57,6 +60,22 @@ class ProfileController extends Controller
         $user->update(['avatar' => $path]);
 
         return Redirect::route('profile.edit')->with('status', 'avatar-updated');
+    }
+
+    /**
+     * Remove the user's avatar and reset to the initial-letter fallback.
+     */
+    public function removeAvatar(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($user->avatar && ! $user->avatar_is_remote) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($user->avatar);
+        }
+
+        $user->update(['avatar' => null]);
+
+        return Redirect::route('profile.edit')->with('status', 'avatar-removed');
     }
 
     /**

@@ -21,8 +21,11 @@ class VNPayService
 
     /**
      * Tạo URL thanh toán VNPay
+     *
+     * @param  string $orderId  Pending token (UUID) từ session — không phải payment ID.
+     *                          VNPay không yêu cầu số, chỉ yêu cầu duy nhất.
      */
-    public function createPaymentUrl(int $orderId, int $amount, string $orderDesc, string $ipAddr): string
+    public function createPaymentUrl(string $orderId, int $amount, string $orderDesc, string $ipAddr): string
     {
         $vnpParams = [
             'vnp_Version'    => '2.1.0',
@@ -49,15 +52,29 @@ class VNPayService
     }
 
     /**
-     * Xác minh chữ ký từ VNPay callback
+     * Xác minh chữ ký từ VNPay callback.
+     *
+     * C1: Validate input — tránh PHP warning lộ stack trace khi response thiếu field.
      */
     public function verifyCallback(array $data): bool
     {
         $secureHash = $data['vnp_SecureHash'] ?? '';
+        if ($secureHash === '') {
+            return false;
+        }
+
         unset($data['vnp_SecureHash'], $data['vnp_SecureHashType']);
 
-        ksort($data);
-        $queryString = http_build_query($data);
+        // Lọc bỏ các field không tham gia ký (an toàn với response lạ)
+        $allowed = [];
+        foreach ($data as $key => $value) {
+            if (str_starts_with($key, 'vnp_')) {
+                $allowed[$key] = $value;
+            }
+        }
+
+        ksort($allowed);
+        $queryString = http_build_query($allowed);
         $hmac        = hash_hmac('sha512', $queryString, $this->hashSecret);
 
         return hash_equals($hmac, $secureHash);
@@ -72,10 +89,11 @@ class VNPayService
     }
 
     /**
-     * Lấy order ID từ TxnRef
+     * Lấy order token (UUID) từ TxnRef.
+     * Trả về string vì giờ pending token là UUID, không phải payment ID số.
      */
-    public function parseOrderId(string $txnRef): int
+    public function parseOrderId(string $txnRef): string
     {
-        return (int) explode('_', $txnRef)[0];
+        return explode('_', $txnRef)[0];
     }
 }

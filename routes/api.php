@@ -20,23 +20,29 @@ use Illuminate\Support\Facades\Route;
 // PUBLIC ROUTES (no authentication required)
 // ================================================================
 
-Route::get('/jobs', [JobController::class, 'index']);
-Route::get('/jobs/{jobPost}', [JobController::class, 'show']);
+// C-2: throttle public reads to mitigate scraping/DoS
+Route::middleware('throttle:60,1')->group(function () {
+    Route::get('/jobs', [JobController::class, 'index']);
+    Route::get('/jobs/{jobPost}', [JobController::class, 'show']);
+});
 
 // ================================================================
-// AUTH ROUTES (no auth required, but sanctum for user association)
+// AUTH ROUTES (C-2: throttle + rate-limit login/register)
 // ================================================================
 
 Route::prefix('auth')->group(function () {
-    Route::post('/register', [AuthController::class, 'register']);
-    Route::post('/login', [AuthController::class, 'login']);
+    // 5 lần/phút cho login: chống brute force + enumeration
+    Route::middleware('throttle:5,1')->group(function () {
+        Route::post('/register', [AuthController::class, 'register']);
+        Route::post('/login', [AuthController::class, 'login']);
+    });
 });
 
 // ================================================================
 // PROTECTED ROUTES (authentication required via Sanctum)
 // ================================================================
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
 
     // -------------------- Auth --------------------
     Route::prefix('auth')->group(function () {
@@ -53,15 +59,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/applications', [ApplicationController::class, 'store']);
     Route::get('/applications/{application}', [ApplicationController::class, 'show']);
 
-    // -------------------- Admin / HR Routes --------------------
-    Route::prefix('admin')->group(function () {
-        // Jobs management
+    // -------------------- Admin / HR Routes (H-2: throttled) --------------------
+    // 60 req/min cho admin thao tác; thắt thêm 'role:admin|hr' middleware
+    // nếu muốn chặn user thường truy cập.
+    Route::middleware('throttle:60,1')->prefix('admin')->group(function () {
         Route::get('/jobs', [JobController::class, 'adminIndex']);
         Route::post('/jobs', [JobController::class, 'store']);
         Route::put('/jobs/{jobPost}', [JobController::class, 'update']);
         Route::delete('/jobs/{jobPost}', [JobController::class, 'destroy']);
 
-        // Applications management
         Route::get('/jobs/{jobPost}/applications', [ApplicationController::class, 'applicantsByJob']);
         Route::get('/applications', [ApplicationController::class, 'adminIndex']);
         Route::put('/applications/{application}/status', [ApplicationController::class, 'updateStatus']);

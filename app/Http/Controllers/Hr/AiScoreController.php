@@ -24,6 +24,8 @@ class AiScoreController extends Controller
     /**
      * POST hr/job-posts/{jobPost}/ai-score
      * Optional: ?rescore=1 để chấm lại tất cả (kể cả đã có điểm).
+     *
+     * L4: Giới hạn AI score theo quota user để chống spam đốt tiền OpenAI.
      */
     public function bulkScore(Request $request, JobPost $jobPost): JsonResponse
     {
@@ -37,6 +39,20 @@ class AiScoreController extends Controller
             ], 403);
         }
 
+        // L4: chặn nếu user đã hết quota
+        if ($user->hasReachedAiQuota()) {
+            $remaining = $user->remainingAiQuota();
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn đã hết lượt chấm điểm AI hôm nay.',
+                'quota' => $remaining,
+                'limit' => [
+                    'daily' => \App\Models\User::AI_SCORE_DAILY_LIMIT,
+                    'total' => \App\Models\User::AI_SCORE_TOTAL_LIMIT,
+                ],
+            ], 429);
+        }
+
         $rescoreAll = $request->boolean('rescore');
 
         $query = JobApplication::where('job_post_id', $jobPost->id);
@@ -46,6 +62,14 @@ class AiScoreController extends Controller
 
         $applications = $query->orderBy('id')->get();
         $total = $applications->count();
+
+        // L4: giới hạn số lượng chấm theo quota còn lại
+        $remaining = $user->remainingAiQuota();
+        $maxAllowed = min($total, $remaining['daily_remaining'], $remaining['total_remaining']);
+        if ($maxAllowed < $total) {
+            $applications = $applications->take($maxAllowed);
+            $total = $applications->count();
+        }
 
         if ($total === 0) {
             return response()->json([
@@ -85,6 +109,11 @@ class AiScoreController extends Controller
             }
         }
 
+        // L4: tăng quota counter sau khi xử lý
+        if ($scored > 0) {
+            $user->incrementAiUsage($scored);
+        }
+
         return response()->json([
             'success'  => true,
             'total'    => $total,
@@ -100,6 +129,8 @@ class AiScoreController extends Controller
 
     /**
      * POST hr/applications/{application}/rescore
+     *
+     * L4: check quota trước khi gọi AI.
      */
     public function rescore(Request $request, JobApplication $application): JsonResponse
     {
@@ -113,8 +144,18 @@ class AiScoreController extends Controller
             ], 403);
         }
 
+        // L4: chặn nếu đã hết quota
+        if ($user->hasReachedAiQuota()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn đã hết lượt chấm điểm AI hôm nay.',
+                'quota' => $user->remainingAiQuota(),
+            ], 429);
+        }
+
         try {
             $result = $this->scorer->scoreAndStore($application);
+            $user->incrementAiUsage(1);   // L4: tăng quota counter
             return response()->json([
                 'success' => true,
                 'score'   => $result['score'],

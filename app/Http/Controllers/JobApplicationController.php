@@ -10,8 +10,11 @@ use Illuminate\Support\Str;
 use App\Models\JobApplication;
 use App\Models\JobPost;
 use App\Models\Cv;
+use App\Models\Template;
 use App\Services\PdfTextExtractor;
 use App\Policies\ApplicationPolicy;
+use App\Support\PiiLogHash;
+use Illuminate\Validation\Rule;
 
 class JobApplicationController extends Controller
 {
@@ -98,12 +101,13 @@ class JobApplicationController extends Controller
         // ============================================================
         // STEP 6: Log successful access
         // ============================================================
+        // L-6: hash email trước khi log — chống GDPR leak qua backup/log shipper
         Log::channel('cv_access')->info('CV File Downloaded Successfully', [
             'user_id' => $user->id,
             'user_role' => $user->role,
             'application_id' => $application->id,
             'candidate_name' => $application->full_name,
-            'candidate_email' => $application->email,
+            'candidate_email_hash' => PiiLogHash::email($application->email),
             'job_post_id' => $application->job_post_id,
             'job_post_title' => $application->jobPost?->title,
             'cv_path' => $application->cv_path ?? $application->cv_file,
@@ -277,56 +281,144 @@ class JobApplicationController extends Controller
     // ============================================================
 
     /**
-     * Tìm kiếm CV theo kỹ năng/kinh nghiệm - bảo mật
+     * Trích xuất toàn bộ text từ CV ứng viên (để search)
+     */
+    private function extractCvTextForSearch(Cv $cv): string
+    {
+        $texts = [];
+
+        // personal_info
+        $pi = $cv->personal_info ?? [];
+        foreach ($pi as $val) {
+            if (is_string($val) && $val) $texts[] = $val;
+        }
+
+        // objective
+        if (!empty($cv->objective)) $texts[] = $cv->objective;
+
+        // sections & items
+        foreach ($cv->sections as $section) {
+            foreach ($section->items as $item) {
+                foreach (($item->content ?? []) as $val) {
+                    if (is_string($val) && $val) $texts[] = $val;
+                }
+            }
+        }
+
+        return mb_strtolower(implode(' ', $texts));
+    }
+
+    /**
+     * Tìm kiếm & xếp hạng CV theo multi-keyword
      */
     public function searchCv(Request $request, JobPost $jobPost)
     {
         $user = auth()->user();
-
-        // Eager load user để tránh lazy-load khi check authorization
         $jobPost->loadMissing('user');
 
         if (!Gate::forUser($user)->allows('searchCv', $jobPost)) {
             abort(403, 'Bạn không có quyền truy cập!');
         }
 
-        $keyword = $request->get('q');
-
-        // Trích xuất text từ PDF
         $this->extractCvTextForJobPost($jobPost->id);
 
-        $query = JobApplication::with(['user', 'cv.sections.items'])
-            ->where('job_post_id', $jobPost->id);
+        $keywordInput = $request->input('keywords', '');
 
-        if ($keyword) {
-            $query->where(function ($q) use ($keyword) {
-                $q->where('full_name', 'like', "%{$keyword}%")
-                    ->orWhere('email', 'like', "%{$keyword}%")
-                    ->orWhere('phone', 'like', "%{$keyword}%")
-                    ->orWhere('cv_text', 'like', "%{$keyword}%");
+        // Parse keywords: split by comma, newline, hoặc space
+        $keywords = array_filter(
+            array_map('trim', preg_split('/[,\n]+/', $keywordInput)),
+            fn($k) => mb_strlen($k) >= 2
+        );
+        $keywords = array_map('mb_strtolower', $keywords);
 
-                $q->orWhereHas('cv', function ($cvq) use ($keyword) {
-                    $cvq->where('personal_info->skills', 'like', "%{$keyword}%");
-                });
+        $applications = JobApplication::with(['user', 'cv.sections.items'])
+            ->where('job_post_id', $jobPost->id)
+            ->get();
 
-                $q->orWhereHas('cv.sections.items', function ($sq) use ($keyword) {
-                    $sq->where(function ($sq2) use ($keyword) {
-                        $sq2->orWhere('content->name', 'like', "%{$keyword}%");
-                        $sq2->orWhere('content->position', 'like', "%{$keyword}%");
-                        $sq2->orWhere('content->company', 'like', "%{$keyword}%");
-                        $sq2->orWhere('content->description', 'like', "%{$keyword}%");
-                        $sq2->orWhere('content->degree', 'like', "%{$keyword}%");
-                        $sq2->orWhere('content->school', 'like', "%{$keyword}%");
-                        $sq2->orWhere('content->tech', 'like', "%{$keyword}%");
-                        $sq2->orWhere('content->url', 'like', "%{$keyword}%");
-                    });
-                });
+        // Nếu có keywords → tính score & lọc
+        if (!empty($keywords)) {
+            /** @var array<int, JobApplication> $scored */
+            $scored = [];
+
+            foreach ($applications as $app) {
+                $appCvText = '';
+
+                if ($app->cv) {
+                    $appCvText = $this->extractCvTextForSearch($app->cv);
+                } elseif ($app->cv_text) {
+                    $appCvText = mb_strtolower($app->cv_text);
+                }
+
+                $matched = [];
+                $missing = [];
+                $score = 0;
+
+                foreach ($keywords as $kw) {
+                    if (str_contains($appCvText, $kw)) {
+                        $matched[] = $kw;
+                        $score++;
+                    } else {
+                        $missing[] = $kw;
+                    }
+                }
+
+                // Chỉ hiện CV có ít nhất 1 keyword match
+                if ($score > 0) {
+                    $app->keyword_score = $score;
+                    $app->keyword_matched = $matched;
+                    $app->keyword_missing = $missing;
+                    $scored[] = $app;
+                }
+            }
+
+            // Sort: nhiều match nhất → ít nhất; cùng score thì theo applied_at
+            usort($scored, function ($a, $b) use ($keywords) {
+                if ($b->keyword_score !== $a->keyword_score) {
+                    return $b->keyword_score <=> $a->keyword_score;
+                }
+                // Tie-break: ưu tiên keyword gần cuối (keyword đặc thù hơn)
+                $aLastScore = 0;
+                $bLastScore = 0;
+                foreach (array_reverse($keywords) as $ki => $kw) {
+                    if (in_array($kw, $a->keyword_matched)) $aLastScore = $ki;
+                    if (in_array($kw, $b->keyword_matched)) $bLastScore = $ki;
+                }
+                return $bLastScore <=> $aLastScore;
             });
+
+            $total = count($scored);
+            $perPage = 12;
+            $page = (int) $request->input('page', 1);
+            $paginated = array_slice($scored, ($page - 1) * $perPage, $perPage);
+
+            $applications = new \Illuminate\Pagination\LengthAwarePaginator(
+                $paginated,
+                $total,
+                $perPage,
+                $page,
+                ['path' => $request->url(), 'query' => $request->query()]
+            );
+        } else {
+            // Không có keyword → hiện tất cả, sắp xếp theo applied_at
+            $applications = $applications
+                ->sortByDesc('applied_at')
+                ->values();
+            $total = $applications->count();
+            $perPage = 12;
+            $page = (int) $request->input('page', 1);
+            $paginated = $applications->slice(($page - 1) * $perPage, $perPage);
+            $applications = new \Illuminate\Pagination\LengthAwarePaginator(
+                $paginated, $total, $perPage, $page,
+                ['path' => $request->url(), 'query' => $request->query()]
+            );
         }
 
-        $applications = $query->latest('applied_at')->paginate(12)->withQueryString();
-
-        return view('hr.applications.cv-search', compact('applications', 'jobPost', 'keyword'));
+        return view('hr.applications.cv-search', [
+            'applications' => $applications,
+            'jobPost' => $jobPost,
+            'keywords' => $keywordInput,
+            'keywordList' => $keywords,
+        ]);
     }
 
     // ============================================================
@@ -363,7 +455,7 @@ class JobApplicationController extends Controller
         }
 
         // Sắp xếp: mặc định mới nhất; ?sort=ai => điểm AI cao → thấp (null cuối)
-        $sort = $request->get('sort', 'newest');
+        $sort = $request->input('sort', 'newest');
         if ($sort === 'ai') {
             $query->orderByRaw('ai_score IS NULL ASC')
                 ->orderByDesc('ai_score')
@@ -431,7 +523,10 @@ class JobApplicationController extends Controller
     // ============================================================
 
     /**
-     * Lịch sử ứng tuyển của user - chỉ user đó được xem
+     * Lịch sử ứng tuyển của user - chỉ user đó được xem.
+     *
+     * M1: Ẩn các field nhạy cảm (ai_breakdown, ai_summary chi tiết) để
+     * applicant không thấy lý do HR reject. Chỉ trả score (int) + label.
      */
     public function myApplications()
     {
@@ -439,6 +534,13 @@ class JobApplicationController extends Controller
             ->where('user_id', auth()->id())
             ->latest('applied_at')
             ->paginate(10);
+
+        // M1: Mask các field nhạy cảm — applicant không được xem breakdown
+        $applications->getCollection()->transform(function ($app) {
+            $app->setAttribute('ai_breakdown', null);
+            $app->setAttribute('ai_summary', null);
+            return $app;
+        });
 
         return view('user.applications.index', compact('applications'));
     }
@@ -457,12 +559,33 @@ class JobApplicationController extends Controller
             'full_name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
             'phone' => 'nullable|string|max:20',
-            'cv_id' => 'nullable|exists:cvs,id',
+            // L-12: giới hạn cv_id về user hiện tại — nếu attacker gửi cv_id
+            // của user khác, bị reject ngay tại FormRequest.
+            'cv_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('cvs', 'id')->where(function ($query) use ($request) {
+                    $query->where('user_id', $request->user()?->id);
+                }),
+            ],
             'cv_file' => [
                 'nullable',
                 'file',
                 'mimes:pdf,doc,docx',
                 'max:5120', // 5MB max
+                // C3: kiểm tra MIME thật qua finfo — chống file PHP rename .pdf
+                function (string $attribute, $value, \Closure $fail) {
+                    if (!$value || !method_exists($value, 'getRealPath')) return;
+                    $realPath = $value->getRealPath();
+                    if (!$realPath || !is_readable($realPath)) return;
+                    $finfo = new \finfo(FILEINFO_MIME_TYPE);
+                    $mime = $finfo->file($realPath);
+                    $allowed = ['application/pdf', 'application/msword',
+                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+                    if (!in_array($mime, $allowed, true)) {
+                        $fail("File CV phải là PDF, DOC hoặc DOCX thực sự (MIME: {$mime}).");
+                    }
+                },
             ],
             'cover_letter' => 'nullable|string|max:2000',
         ]);
@@ -517,7 +640,7 @@ class JobApplicationController extends Controller
 
             Log::channel('cv_access')->info('CV File Uploaded', [
                 'user_id' => auth()->check() ? auth()->id() : null,
-                'application_email' => $validated['email'],
+                'application_email_hash' => PiiLogHash::email($validated['email']),
                 'job_post_id' => $jobPost->id,
                 'filename' => $filename,
                 'size' => $file->getSize(),
@@ -543,9 +666,9 @@ class JobApplicationController extends Controller
 
         $application = JobApplication::create($applicationData);
 
-        // Extract CV text in background (if PDF)
+        // C2: Extract CV text in background via queue (chống DoS qua PDF lớn)
         if ($cvPath && $request->hasFile('cv_file')) {
-            $this->extractCvTextForApplication($application);
+            \App\Jobs\ExtractCvTextJob::dispatch($application->id);
         }
 
         return back()->with('success', 'Đã nộp hồ sơ ứng tuyển thành công!');
@@ -556,19 +679,25 @@ class JobApplicationController extends Controller
     // ============================================================
 
     /**
-     * Trích xuất text từ PDF đã upload
-     * @param int $jobPostId
+     * Đẩy các application chưa extract text vào queue (không chạy sync).
+     *
+     * C2 + C5: trước đây chạy đồng bộ trong request lifecycle → nếu HR spam
+     * searchCv, mỗi lần sẽ trigger extract PDF cho TẤT CẢ application
+     * chưa có text → DoS. Giờ dispatch job, worker xử lý sau.
+     *
+     * C5: throttle IP/user ở route layer đã có; controller chỉ dispatch
+     * job để tránh block request.
      */
     private function extractCvTextForJobPost(int $jobPostId): void
     {
-        /** @var \Illuminate\Support\Collection<int, JobApplication> $appsWithoutText */
-        $appsWithoutText = JobApplication::where('job_post_id', $jobPostId)
+        $appIds = JobApplication::where('job_post_id', $jobPostId)
             ->whereNotNull('cv_path')
             ->whereNull('cv_text')
-            ->get();
+            ->limit(50)   // Cap mỗi lần để tránh flood queue
+            ->pluck('id');
 
-        foreach ($appsWithoutText as $app) {
-            $this->extractCvTextForApplication($app);
+        foreach ($appIds as $id) {
+            \App\Jobs\ExtractCvTextJob::dispatch($id);
         }
     }
 

@@ -26,13 +26,17 @@ class MoMoService
 
     /**
      * Tạo URL thanh toán MoMo
+     *
+     * @param  string $orderId  Pending token (UUID) — không phải payment ID.
+     *                          MoMo chấp nhận string cho orderId.
      */
-    public function createPaymentUrl(int $orderId, int $amount, string $orderDesc): array
+    public function createPaymentUrl(string $orderId, int $amount, string $orderDesc): array
     {
         $requestId  = $this->partnerCode . now()->timestamp . Str::random(4);
         $orderInfo  = $orderDesc;
         $requestType = 'captureWallet';
-        $extraData  = base64_encode(json_encode(['payment_id' => $orderId]));
+        // Lưu pending token vào extraData để callback round-trip lấy lại được.
+        $extraData  = base64_encode(json_encode(['pending_token' => $orderId]));
 
         $rawHash = "accessKey={$this->accessKey}"
             . "&amount={$amount}"
@@ -53,7 +57,7 @@ class MoMoService
             'storeId'     => 'CVactive',
             'requestId'   => $requestId,
             'amount'      => $amount,
-            'orderId'     => (string) $orderId,
+            'orderId'     => $orderId,
             'orderInfo'   => $orderInfo,
             'redirectUrl' => $this->returnUrl,
             'ipnUrl'      => $this->notifyUrl,
@@ -69,10 +73,24 @@ class MoMoService
     }
 
     /**
-     * Xác minh chữ ký từ MoMo callback
+     * Xác minh chữ ký từ MoMo callback.
+     *
+     * C1: Trả về false nếu thiếu field — tránh PHP warning "Undefined index"
+     * lộ stack trace trong production khi MoMo gửi response không đầy đủ.
      */
     public function verifyCallback(array $data): bool
     {
+        $required = [
+            'amount', 'extraData', 'message', 'orderId', 'orderInfo',
+            'orderType', 'partnerCode', 'payType', 'requestId',
+            'responseTime', 'resultCode', 'transId',
+        ];
+        foreach ($required as $key) {
+            if (!array_key_exists($key, $data)) {
+                return false;
+            }
+        }
+
         $rawHash = "accessKey={$this->accessKey}"
             . "&amount={$data['amount']}"
             . "&extraData={$data['extraData']}"
@@ -89,7 +107,7 @@ class MoMoService
 
         $signature = hash_hmac('sha256', $rawHash, $this->secretKey);
 
-        return hash_equals($signature, $data['signature'] ?? '');
+        return hash_equals($signature, (string)($data['signature'] ?? ''));
     }
 
     public function isSuccess(array $data): bool

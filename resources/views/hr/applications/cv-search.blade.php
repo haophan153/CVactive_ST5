@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Tìm CV: ' . $keyword . ' - ' . $jobPost->title . ' - CVactive')
+@section('title', 'Tìm CV: ' . ($keywords ?: 'Tất cả') . ' - ' . $jobPost->title . ' - CVactive')
 
 @section('content')
 <div class="py-6">
@@ -34,40 +34,79 @@
             </div>
         </div>
 
-        {{-- Search Form --}}
+        {{-- Multi-Keyword Search Form --}}
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
-            <form method="GET" action="{{ route('hr.job-posts.search-cv', $jobPost) }}" class="flex flex-col sm:flex-row gap-3">
-                <div class="flex-1 relative">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                        </svg>
+            <form method="GET" action="{{ route('hr.job-posts.search-cv', $jobPost) }}" id="keyword-form">
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="flex-1">
+                        <label for="keywords-input" class="block text-sm font-semibold text-gray-700 mb-1.5">
+                            Nhập từ khóa tìm kiếm
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none top-7">
+                                <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                </svg>
+                            </div>
+                            <textarea
+                                id="keywords-input"
+                                name="keywords"
+                                rows="3"
+                                placeholder="Nhập các từ khóa, cách nhau bằng dấu phẩy hoặc dòng mới.&#10;Ví dụ: PHP, Laravel, MySQL, React"
+                                class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
+                                oninput="updateKeywordChips()"
+                            >{{ $keywords }}</textarea>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1.5">
+                            Cách nhau bằng <code class="bg-gray-100 px-1 rounded">,</code> hoặc <code class="bg-gray-100 px-1 rounded">Enter</code>
+                        </p>
                     </div>
-                    <input type="text"
-                        name="q"
-                        value="{{ $keyword ?? '' }}"
-                        placeholder="VD: PHP, Laravel, React, Designer..."
-                        class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                    <div class="flex flex-col justify-end gap-2 sm:w-40">
+                        <button type="submit"
+                            class="px-6 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition shadow-sm flex items-center justify-center gap-2">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                            Tìm kiếm
+                        </button>
+                        @if($keywords)
+                        <a href="{{ route('hr.job-posts.search-cv', $jobPost) }}"
+                            class="px-4 py-2 border border-gray-300 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 transition text-center">
+                            Xóa tìm kiếm
+                        </a>
+                        @endif
+                    </div>
                 </div>
-                <button type="submit"
-                    class="px-6 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition shadow-sm">
-                    Tìm kiếm
-                </button>
-                @if($keyword)
-                <a href="{{ route('hr.job-posts.search-cv', $jobPost) }}"
-                    class="px-4 py-2.5 border border-gray-300 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
-                    Xóa
-                </a>
-                @endif
             </form>
-            <p class="text-xs text-gray-400 mt-2">Tìm trong kỹ năng, kinh nghiệm, mô tả của ứng viên đã ứng tuyển vào tin này.</p>
         </div>
+
+        {{-- Keyword Chips Summary --}}
+        @if(count($keywordList) > 0)
+        <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-6">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-sm font-semibold text-indigo-700">Từ khóa tìm kiếm:</span>
+                @foreach($keywordList as $kw)
+                <span class="inline-flex items-center px-2.5 py-1 bg-indigo-600 text-white text-xs font-semibold rounded-full">
+                    {{ $kw }}
+                </span>
+                @endforeach
+            </div>
+        </div>
+        @endif
 
         {{-- Results Summary --}}
         <div class="mb-4">
-            @if($keyword)
+            @if($keywordList)
                 <p class="text-sm text-gray-600">
-                    Tìm thấy <strong>{{ $applications->total() }}</strong> ứng viên phù hợp với <strong>"{{ $keyword }}"</strong>
+                    Tìm thấy <strong>{{ $applications->total() }}</strong> ứng viên phù hợp
+                    @if(count($keywordList) > 0)
+                        với từ khóa:
+                        <span class="inline-flex gap-1 ml-1">
+                            @foreach($keywordList as $kw)
+                            <span class="bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded text-xs font-medium">{{ $kw }}</span>
+                            @endforeach
+                        </span>
+                    @endif
                 </p>
             @else
                 <p class="text-sm text-gray-600">
@@ -84,23 +123,11 @@
                 </svg>
                 <h3 class="text-lg font-semibold text-gray-700 mb-1">Không tìm thấy ứng viên nào</h3>
                 <p class="text-sm text-gray-500">
-                    @if($keyword)
-                        Thử từ khóa khác hoặc xem <a href="{{ route('hr.job-posts.applications', $jobPost) }}" class="text-indigo-600 hover:underline">tất cả đơn ứng tuyển</a>.
-                    @else
-                        Chưa có ứng viên nào đính kèm CV trong tin này.
-                    @endif
+                    Thử từ khóa khác hoặc xem <a href="{{ route('hr.job-posts.applications', $jobPost) }}" class="text-indigo-600 hover:underline">tất cả đơn ứng tuyển</a>.
                 </p>
             </div>
         @else
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                @php
-                    function highlightMatch($items, $keyword) {
-                        if (!$keyword) return $items;
-                        return array_map(function ($item) use ($keyword) {
-                            return preg_replace('/(' . preg_quote($keyword, '/') . ')/i', '<mark class="bg-yellow-200 text-yellow-900 rounded px-0.5">$1</mark>', $item);
-                        }, $items);
-                    }
-                @endphp
                 @foreach($applications as $application)
                 @php
                     $cv = $application->cv;
@@ -132,10 +159,30 @@
                         }
                     }
 
-                    $highlightedSkills = highlightMatch($allSkills, $keyword);
+                    $score = $application->keyword_score ?? 0;
+                    $matched = $application->keyword_matched ?? [];
+                    $missing = $application->keyword_missing ?? [];
                 @endphp
 
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition flex flex-col">
+
+                    {{-- Score Badge --}}
+                    @if($score > 0)
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="inline-flex items-center px-2.5 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">
+                                {{ $score }}/{{ count($keywordList) }} keyword
+                            </span>
+                        </div>
+                        @if($score == count($keywordList) && count($keywordList) > 0)
+                        <span class="text-green-600 text-xs font-semibold flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                            Perfect match
+                        </span>
+                        @endif
+                    </div>
+                    @endif
+
                     {{-- Header --}}
                     <div class="flex items-start gap-3 mb-3">
                         @if($avatar)
@@ -174,13 +221,31 @@
                         @endif
                     </div>
 
+                    {{-- Keyword Match Breakdown --}}
+                    @if(count($matched) > 0 || count($missing) > 0)
+                    <div class="mb-3 p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                        <div class="flex flex-wrap gap-1 mb-1.5">
+                            @foreach($matched as $kw)
+                            <span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded font-semibold border border-green-200">
+                                {{ $kw }}
+                            </span>
+                            @endforeach
+                            @foreach($missing as $kw)
+                            <span class="px-2 py-0.5 bg-red-50 text-red-400 text-xs rounded font-medium border border-red-100 line-through">
+                                {{ $kw }}
+                            </span>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+
                     {{-- Skills --}}
                     @if(count($allSkills) > 0)
                     <div class="mb-3 flex-1">
                         <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Kỹ năng</p>
                         <div class="flex flex-wrap gap-1.5">
-                            @foreach(array_slice($allSkills, 0, 6) as $i => $skill)
-                            <span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs rounded font-medium">{!! $highlightedSkills[$i] !!}</span>
+                            @foreach(array_slice($allSkills, 0, 6) as $skill)
+                            <span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs rounded font-medium">{{ $skill }}</span>
                             @endforeach
                             @if(count($allSkills) > 6)
                             <span class="px-2 py-0.5 bg-gray-100 text-gray-500 text-xs rounded">+{{ count($allSkills) - 6 }}</span>
@@ -207,7 +272,6 @@
                             Xem chi tiết
                         </a>
                         @elseif($application->hasCvFile())
-                        {{-- SECURE: Use controller route instead of direct file URL --}}
                         <a href="{{ route('hr.applications.cv.download', $application) }}"
                             class="flex-1 text-center px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition">
                             Tải file CV

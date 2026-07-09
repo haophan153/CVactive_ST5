@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Cv;
 use App\Models\CvSection;
 use App\Models\CvSectionItem;
 use App\Models\Template;
+use App\Support\CvHtmlSanitizer;
 
 class CvController extends Controller
 {
@@ -53,6 +56,11 @@ class CvController extends Controller
 
         $template = Template::findOrFail($request->template_id);
 
+        // H2: Free user không được chọn template Premium
+        if ($template->is_premium && !$user->hasProAccess()) {
+            return back()->with('error', "Template '{$template->name}' chỉ dành cho gói Pro. Vui lòng nâng cấp để sử dụng.");
+        }
+
         // Tăng usage count
         $template->increment('usage_count');
 
@@ -72,8 +80,8 @@ class CvController extends Controller
                 'avatar'     => $user->avatar ?? '',
             ],
             'objective'   => '',
-            'theme_color' => '#4F46E5',
-            'font_family' => 'Inter',
+            'theme_color' => $template->theme_color ?? '#4F46E5',
+            'font_family' => $template->font_family ?? 'Inter',
             'visibility'  => 'private',
             'is_draft'    => true,
         ]);
@@ -141,6 +149,8 @@ class CvController extends Controller
     {
         $this->authorize('update', $cv);
 
+        $user = auth()->user();
+
         $request->validate([
             'title'       => 'required|string|max:255',
             'theme_color' => 'nullable|string|max:20',
@@ -150,11 +160,24 @@ class CvController extends Controller
             'personal_info' => 'nullable|array',
         ]);
 
+        // H4: CV visibility=public chỉ dành cho Pro users (chống spam SEO,
+        // free user tạo link public vô tận làm Google index lụi CV).
+        $visibility = $request->visibility ?? $cv->visibility;
+        if ($visibility === 'public' && !$user->hasProAccess()) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'CV công khai chỉ dành cho gói Pro. Vui lòng nâng cấp hoặc chuyển về riêng tư.',
+                ], 403);
+            }
+            return back()->with('error', 'CV công khai chỉ dành cho gói Pro. Vui lòng nâng cấp hoặc chuyển về riêng tư.');
+        }
+
         $cv->update([
             'title'        => $request->title,
             'theme_color'  => $request->theme_color ?? $cv->theme_color,
             'font_family'  => $request->font_family ?? $cv->font_family,
-            'visibility'   => $request->visibility ?? $cv->visibility,
+            'visibility'   => $visibility,
             'objective'    => $request->objective,
             'personal_info' => $request->personal_info ?? $cv->personal_info,
             'is_draft'     => $request->boolean('is_draft', $cv->is_draft),
@@ -288,13 +311,25 @@ class CvController extends Controller
      */
     public function share(string $token)
     {
-        $share = \App\Models\CvShare::where('share_token', $token)
-            ->where(function ($q) {
-                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
-            })
-            ->firstOrFail();
+        $share = \App\Models\CvShare::where('share_token', $token)->firstOrFail();
 
-        $share->increment('view_count');
+        // M-4: validate revoked OR expired → reject
+        if (!$share->isActive()) {
+            abort(404, 'Share link đã bị thu hồi hoặc hết hạn.');
+        }
+
+        // M2: Atomic increment + dùng DB::raw cho view_count để tránh race
+        // concurrent request cùng truy cập share token
+        \DB::table('cv_shares')
+            ->where('id', $share->id)
+            ->increment('view_count');
+
+        // Audit trail + rate-limit best-effort
+        \DB::table('cv_shares')
+            ->where('id', $share->id)
+            ->update(['last_viewed_at' => now()]);
+
+        $share->refresh();
         $cv = $share->cv->load(['template', 'sections.items']);
 
         return view('cv.public', compact('cv', 'share'));
@@ -313,10 +348,16 @@ class CvController extends Controller
 
         $cv = $share->cv->load(['template', 'sections.items']);
 
+        // C-3: PDF generate — chống DoS via payload cực lớn
+        set_time_limit(30);
+        ini_set('memory_limit', '256M');
+
         $html = view('cv.pdf', compact('cv'))->render();
 
+        // C-3: Sanitize HTML để chống XSS/file:// scheme payload trong CV content
+        $html = CvHtmlSanitizer::purify($html);
+
         // Ensure all fonts are 'dejavusans' (lowercase, no space) for full Unicode / Vietnamese support
-        // dompdf only recognizes 'dejavusans' (not 'DejaVu Sans' with space)
         $html = str_replace(
             "font-family: 'Helvetica', 'Arial', sans-serif",
             "font-family: 'dejavusans', sans-serif",
@@ -324,11 +365,14 @@ class CvController extends Controller
         );
         $html = preg_replace('/font-family\s*:\s*["\'][^"\']+["\']/i', "font-family: 'dejavusans'", $html);
 
-        $pdf = \PDF::loadHTML($html);
+        // C-3: Chống LFI/SSRF — tắt local file access, không cho phép
+        // DomPDF fetch file://, phar://, hoặc các scheme ngoài.
+        $pdf = Pdf::loadHTML($html);
         $pdf->setPaper('A4', 'portrait');
-        $pdf->setOption('enable-local-file-access', true);
+        $pdf->setOption('enable-local-file-access', false);
         $pdf->setOption('isHtml5ParserEnabled', true);
         $pdf->setOption('isRemoteEnabled', false);
+        $pdf->setOption('chroot', realpath(base_path()));
 
         return $pdf->download(Str::slug($cv->title) . '.pdf');
     }
@@ -358,16 +402,53 @@ class CvController extends Controller
 
         $share = $cv->shares()->first();
 
-        if (!$share) {
-            $share = \App\Models\CvShare::create([
-                'cv_id'       => $cv->id,
-                'share_token' => Str::random(32),
-            ]);
+        // M-4: Nếu share hết hạn hoặc đã revoke → tạo token mới luôn.
+        // Nếu dùng token cũ vĩnh viễn sẽ leak PII sau khi share email forward.
+        $needNewToken = !$share
+            || ($share->expires_at !== null && $share->expires_at->isPast());
+
+        if ($needNewToken) {
+            if ($share) {
+                $share->update([
+                    'share_token' => Str::random(32),
+                    'expires_at'  => now()->addDays(30),  // M-4: default 30-day TTL
+                ]);
+            } else {
+                $share = \App\Models\CvShare::create([
+                    'cv_id'       => $cv->id,
+                    'share_token' => Str::random(32),
+                    'expires_at'  => now()->addDays(30),
+                ]);
+            }
         }
 
         $url = route('cv.public', $share->share_token);
 
-        return response()->json(['success' => true, 'url' => $url]);
+        return response()->json([
+            'success'    => true,
+            'url'        => $url,
+            'expires_at' => $share->expires_at?->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * M-4 + L-11: Thu hồi share link ngay lập tức (xóa token, không xóa record
+     * để giữ audit trail).
+     */
+    public function revokeShare(Cv $cv)
+    {
+        $this->authorize('update', $cv);
+
+        $share = $cv->shares()->first();
+        if ($share) {
+            $share->update([
+                'share_token' => null,
+                'expires_at'  => now()->subDay(),  // Mark expired
+                'revoked_at'  => now(),
+            ]);
+        }
+
+        return response()->json(['success' => true]);
     }
 
     /**
@@ -382,9 +463,22 @@ class CvController extends Controller
         ]);
 
         $template = Template::findOrFail($request->template_id);
+
+        // H2: Free user không được đổi sang template Premium
+        if ($template->is_premium && !auth()->user()->hasProAccess()) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'Template này chỉ dành cho gói Pro. Vui lòng nâng cấp.',
+            ], 403);
+        }
+
         $template->increment('usage_count');
 
-        $cv->update(['template_id' => $request->template_id]);
+        $cv->update([
+            'template_id'  => $request->template_id,
+            'theme_color' => $template->theme_color ?? $cv->theme_color,
+            'font_family' => $template->font_family ?? $cv->font_family,
+        ]);
 
         return response()->json(['success' => true]);
     }
@@ -400,11 +494,16 @@ class CvController extends Controller
             'avatar' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ]);
 
-        // Xóa avatar cũ nếu có (chỉ xóa file local, không xóa URL bên ngoài như Google avatars)
-        if (!empty($cv->personal_info['avatar']) && !str_starts_with($cv->personal_info['avatar'], 'http')) {
-            $oldAvatar = public_path('storage/' . $cv->personal_info['avatar']);
+        // Xóa avatar cũ nếu có (chỉ xóa file local an toàn)
+        if (
+            !empty($cv->personal_info['avatar'])
+            && is_string($cv->personal_info['avatar'])
+            && !str_starts_with($cv->personal_info['avatar'], 'http')
+            && $this->isSafeStoragePath($cv->personal_info['avatar'])
+        ) {
+            $oldAvatar = \Storage::disk('public')->path($cv->personal_info['avatar']);
             if (file_exists($oldAvatar)) {
-                unlink($oldAvatar);
+                @unlink($oldAvatar);
             }
         }
 
@@ -433,11 +532,17 @@ class CvController extends Controller
         if (!empty($cv->personal_info['avatar'])) {
             $oldAvatar = $cv->personal_info['avatar'];
 
-            // Only delete local files (skip external URLs like Google avatars)
-            if (!str_starts_with($oldAvatar, 'http')) {
-                $avatarPath = public_path('storage/' . $oldAvatar);
+            // H-1: Chỉ delete khi path nằm trong storage path hợp lệ
+            // — chặn path traversal (../../config/database.php)
+            // và XSS qua URL bên ngoài.
+            if (
+                is_string($oldAvatar)
+                && !str_starts_with($oldAvatar, 'http')
+                && $this->isSafeStoragePath($oldAvatar)
+            ) {
+                $avatarPath = \Storage::disk('public')->path($oldAvatar);
                 if (file_exists($avatarPath)) {
-                    unlink($avatarPath);
+                    @unlink($avatarPath);
                 }
             }
 
@@ -450,6 +555,27 @@ class CvController extends Controller
     }
 
     /**
+     * H-1: Validate avatar path nằm trong storage disk 'public'.
+     * Chặn ../, absolute path, hoặc symlink trỏ ra ngoài.
+     */
+    private function isSafeStoragePath(string $path): bool
+    {
+        if ($path === '' || str_contains($path, '..') || str_contains($path, "\0")) {
+            return false;
+        }
+
+        $disk = \Storage::disk('public');
+        $realBase = realpath($disk->path(''));
+        $realPath = realpath($disk->path($path));
+
+        if (!$realBase || !$realPath) {
+            return false;
+        }
+
+        return str_starts_with($realPath, $realBase);
+    }
+
+    /**
      * Lấy preview HTML (AJAX)
      */
     public function getPreview(Cv $cv)
@@ -459,7 +585,7 @@ class CvController extends Controller
         $cv->load(['template', 'sections.items']);
 
         // Load template directly from database to avoid any stale data
-        $templateModel = \App\Models\Template::find($cv->template_id);
+        $templateModel = Template::find($cv->template_id);
         $bladeView = $templateModel ? $templateModel->blade_view : null;
         $actualView = $bladeView && \View::exists($bladeView) ? $bladeView : 'cv-templates.classic-blue';
 
@@ -473,13 +599,22 @@ class CvController extends Controller
 
     /**
      * Xuất CV ra PDF
+     *
+     * L5: set memory + time limit để chống DoS qua PDF generation với content lớn.
      */
     public function exportPdf(Cv $cv)
     {
         $this->authorize('view', $cv);
         $cv->load(['template', 'sections.items']);
 
+        // C-3 + L5: PDF generate — chống DoS + sanitize XSS
+        set_time_limit(30);
+        ini_set('memory_limit', '256M');
+
         $html = view('cv.pdf', compact('cv'))->render();
+
+        // C-3: Sanitize HTML trước khi render PDF
+        $html = CvHtmlSanitizer::purify($html);
 
         // Ensure all fonts are 'dejavusans' (lowercase, no space) for full Unicode / Vietnamese support
         // dompdf only recognizes 'dejavusans' (not 'DejaVu Sans' with space)
@@ -490,11 +625,13 @@ class CvController extends Controller
         );
         $html = preg_replace('/font-family\s*:\s*["\'][^"\']+["\']/i', "font-family: 'dejavusans'", $html);
 
-        $pdf = \PDF::loadHTML($html);
+        // C-3: Chống LFI/SSRF — tắt local file access + chroot về base path
+        $pdf = Pdf::loadHTML($html);
         $pdf->setPaper('A4', 'portrait');
-        $pdf->setOption('enable-local-file-access', true);
+        $pdf->setOption('enable-local-file-access', false);
         $pdf->setOption('isHtml5ParserEnabled', true);
         $pdf->setOption('isRemoteEnabled', false);
+        $pdf->setOption('chroot', realpath(base_path()));
 
         return $pdf->download(Str::slug($cv->title) . '.pdf');
     }

@@ -35,6 +35,29 @@ class BlogPost extends Model
         'is_featured' => 'boolean',
     ];
 
+    /**
+     * L2: Auto-fill excerpt + slug từ content/title khi không có.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $post) {
+            // Auto-slug từ title khi chưa có
+            if (!$post->slug && $post->title) {
+                $post->slug = \Illuminate\Support\Str::slug($post->title);
+            }
+
+            // L2: Auto-generate excerpt từ content khi null/rỗng
+            if (empty($post->excerpt) && !empty($post->content)) {
+                $plain = trim(strip_tags($post->content));
+                // Lấy 200 ký tự đầu (an toàn UTF-8 cho tiếng Việt)
+                $post->excerpt = mb_substr($plain, 0, 200);
+                if (mb_strlen($plain) > 200) {
+                    $post->excerpt .= '…';
+                }
+            }
+        });
+    }
+
     // ─── Scopes ──────────────────────────────────────────────────────────────
 
     public function scopePublished($query)

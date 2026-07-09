@@ -690,8 +690,10 @@
         </div>
 
         <div class="flex-1 overflow-auto p-4 flex justify-center">
-            <div id="cv-preview-frame"
-                 class="w-[210mm] min-h-[297mm] bg-white shadow-xl"
+            <!-- M-1: iframe + sandbox isolates preview from editor JS context -->
+            <iframe id="cv-preview-frame"
+                 class="w-[210mm] min-h-[297mm] bg-white shadow-xl border-0"
+                 sandbox="allow-same-origin"
                  :style="`font-family: '${cvFontFamily}', sans-serif; min-height: 297mm;`">
                 @php
                     // Load template directly from database to avoid any stale data
@@ -700,7 +702,7 @@
                     $actualView = $bladeView && \View::exists($bladeView) ? $bladeView : 'cv-templates.classic-blue';
                 @endphp
                 @include($actualView, ['cv' => $cv, 'preview' => true])
-            </div>
+            </iframe>
         </div>
     </aside>
 </div>
@@ -796,7 +798,10 @@ function cvEditor() {
                 });
                 const data = await res.json();
                 if (data.success) {
-                    document.getElementById('cv-preview-frame').innerHTML = data.html;
+                    // M-1: dùng srcdoc sandbox thay vì innerHTML để chặn
+                    // stored XSS — script trong CV content không escape
+                    // được khỏi iframe context riêng biệt.
+                    document.getElementById('cv-preview-frame').srcdoc = data.html;
                 }
             } catch (e) {
                 console.error('Preview refresh error:', e);

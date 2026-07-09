@@ -16,6 +16,9 @@ class CvShare extends Model
         'share_token',
         'view_count',
         'expires_at',
+        'revoked_at',
+        'last_viewed_at',
+        'revoke_reason',
     ];
 
     /**
@@ -24,8 +27,10 @@ class CvShare extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'view_count' => 'integer',
-        'expires_at' => 'datetime',
+        'view_count'    => 'integer',
+        'expires_at'    => 'datetime',
+        'revoked_at'    => 'datetime',
+        'last_viewed_at' => 'datetime',
     ];
 
     /**
@@ -34,5 +39,19 @@ class CvShare extends Model
     public function cv()
     {
         return $this->belongsTo(Cv::class);
+    }
+
+    /**
+     * M-4: Check xem share có còn hợp lệ không (revoked OR expired).
+     */
+    public function isActive(): bool
+    {
+        if ($this->revoked_at !== null) {
+            return false;
+        }
+        if ($this->expires_at !== null && $this->expires_at->isPast()) {
+            return false;
+        }
+        return $this->share_token !== null;
     }
 }

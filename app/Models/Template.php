@@ -19,6 +19,8 @@ class Template extends Model
         'category_id',
         'is_premium',
         'is_active',
+        'theme_color',
+        'font_family',
         'usage_count',
     ];
 
@@ -98,7 +100,47 @@ class Template extends Model
             'slate'   => ['bg' => 'bg-slate-700',   'text' => 'text-slate-700',    'hover' => 'hover:bg-slate-800',    'light' => 'bg-slate-50',    'border' => 'border-slate-200'],
             'teal'    => ['bg' => 'bg-teal-600',    'text' => 'text-teal-600',     'hover' => 'hover:bg-teal-700',     'light' => 'bg-teal-50',     'border' => 'border-teal-200'],
         ];
-        return $map[$this->color ?? 'indigo'] ?? $map['indigo'];
+        return $map[$this->paletteFromThemeColor($this->theme_color)] ?? $map['indigo'];
+    }
+
+    /**
+     * L3: Map hex theme_color → palette name gần nhất.
+     */
+    private function paletteFromThemeColor(?string $hex): string
+    {
+        if (!$hex || !preg_match('/^#?([0-9a-fA-F]{6})$/', $hex, $m)) {
+            return 'indigo';
+        }
+
+        $r = hexdec(substr($m[1], 0, 2));
+        $g = hexdec(substr($m[1], 2, 2));
+        $b = hexdec(substr($m[1], 4, 2));
+
+        $max = max($r, $g, $b);
+        $min = min($r, $g, $b);
+        $delta = $max - $min;
+
+        if ($delta < 30) {
+            return 'slate';
+        }
+
+        if ($b > $r && $b > $g) {
+            if ($g > 100) return 'sky';
+            if ($b > 150 && $r > 100) return 'violet';
+            return 'indigo';
+        }
+
+        if ($r > $g && $r > $b) {
+            if ($g > 100) return 'amber';
+            return 'rose';
+        }
+
+        if ($g > $r && $g > $b) {
+            if ($b > 100) return 'teal';
+            return 'emerald';
+        }
+
+        return 'indigo';
     }
 
     /**

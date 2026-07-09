@@ -162,9 +162,15 @@
             <div class="relative" @click.outside="userMenu = false">
                 <button @click="userMenu = !userMenu"
                     class="w-full flex items-center gap-3 rounded-lg p-2 hover:bg-slate-800 transition-all">
-                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-md shadow-indigo-500/20">
-                        {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
-                    </div>
+                    @if(auth()->user()->avatar_url)
+                        <img src="{{ auth()->user()->avatar_url }}"
+                             alt="{{ auth()->user()->name }}"
+                             class="w-8 h-8 rounded-lg object-cover flex-shrink-0 shadow-md shadow-indigo-500/20">
+                    @else
+                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-md shadow-indigo-500/20">
+                            {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                        </div>
+                    @endif
                     <div class="flex-1 min-w-0 text-left">
                         <p class="text-sm font-semibold text-white truncate leading-tight">{{ auth()->user()->name }}</p>
                         <p class="text-xs text-slate-400 truncate leading-tight">{{ auth()->user()->email }}</p>

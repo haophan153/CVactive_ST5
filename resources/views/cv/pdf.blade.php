@@ -16,49 +16,75 @@
 </head>
 <body>
     @php
-        // Load template directly from database to avoid any stale data
+        // ── Load Template ─────────────────────────────────────────────────────
         $templateModel = \App\Models\Template::find($cv->template_id);
         $bladeView = $templateModel ? $templateModel->blade_view : null;
         $actualView = $bladeView && \View::exists($bladeView) ? $bladeView : 'cv-templates.classic-blue';
-        $templateHtml = view($actualView, [
-            'cv' => $cv,
-            'preview' => false,
-        ])->render();
 
-        // FIX 1: Replace all font-family declarations with 'dejavusans' (lowercase, no space)
-        // dompdf ONLY recognizes 'dejavusans' (from installed-fonts.json key) — 'DejaVu Sans' fails silently
+        $templateHtml = view($actualView, ['cv' => $cv, 'preview' => false])->render();
+
+        // ── Font: Map Google Fonts → DomPDF equivalents ─────────────────────
+        $fontFamily = $cv->font_family ?? 'Inter';
+        $fontMap = [
+            'Inter'   => 'dejavusans', 'Roboto' => 'dejavusans',
+            'Open Sans' => 'dejavusans', 'Lato' => 'dejavusans',
+            'Montserrat' => 'dejavusans', 'Poppins' => 'dejavusans',
+            'Nunito'  => 'dejavusans', 'Raleway' => 'dejavusans',
+            'Fira Sans' => 'dejavusans', 'Ubuntu' => 'dejavusans',
+            'Oswald'  => 'dejavusans', 'Archivo' => 'dejavusans',
+            'Work Sans' => 'dejavusans',
+            'Playfair Display' => 'serif', 'Merriweather' => 'serif',
+            'Lora'    => 'serif', 'Source Serif Pro' => 'serif',
+            'JetBrains Mono' => 'monospace', 'Fira Code' => 'monospace',
+            'Source Code Pro' => 'monospace',
+        ];
+        $dompdfFont = $fontMap[$fontFamily] ?? 'dejavusans';
+
         $templateHtml = preg_replace(
-            '/font-family\s*:\s*["\'][^"\']+["\']\s*,/i',
-            "font-family: 'dejavusans',",
+            '/font-family\s*:\s*["\'][^"\']+["\']\s*[,;]/i',
+            "font-family: '{$dompdfFont}', sans-serif;",
             $templateHtml
         );
         $templateHtml = preg_replace(
             '/font-family\s*:\s*["\'][^"\']+["\']\s*;/i',
-            "font-family: 'dejavusans';",
+            "font-family: '{$dompdfFont}';",
             $templateHtml
         );
 
-        // FIX 2: Convert image URLs to local filesystem paths for domPDF
+        // ── Gradient: Preserve gradient in DomPDF ────────────────────────────
+        // DomPDF 0.8+ supports linear-gradient. Replace with theme-aware gradient.
+        $themeColor = $cv->theme_color ?? '#4F46E5';
+        $r = hexdec(substr($themeColor, 1, 2));
+        $g = hexdec(substr($themeColor, 3, 2));
+        $b = hexdec(substr($themeColor, 5, 2));
+        $darkColor = sprintf('#%02x%02x%02x',
+            max(0, $r - 40), max(0, $g - 40), max(0, $b - 40));
+
+        $templateHtml = preg_replace(
+            '/background\s*:\s*linear-gradient\([^)]+\)/i',
+            "background: linear-gradient(135deg, {$themeColor} 0%, {$darkColor} 100%)",
+            $templateHtml
+        );
+        $templateHtml = preg_replace(
+            '/background\s*:\s*[^;]*linear-gradient[^;]+;/i',
+            "background: linear-gradient(135deg, {$themeColor} 0%, {$darkColor} 100%);",
+            $templateHtml
+        );
+
+        // ── Image: Convert URLs to base64 for DomPDF ─────────────────────────
         $projectRoot = realpath(base_path());
-        $baseUrl = rtrim(url('/'), '/');
-        
+
         $templateHtml = preg_replace_callback(
             '/src=["\']([^"\']+)["\']/',
-            function ($matches) use ($projectRoot, $baseUrl) {
+            function ($matches) use ($projectRoot) {
                 $src = $matches[1];
+                if (str_starts_with($src, 'data:')) return $matches[0];
 
-                // Skip data URIs
-                if (str_starts_with($src, 'data:')) {
-                    return $matches[0];
-                }
-
-                // Helper function to find avatar file and return base64
                 $findAvatarBase64 = function($filename) use ($projectRoot) {
                     $paths = [
-                        $projectRoot . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'avatars' . DIRECTORY_SEPARATOR . $filename,
-                        $projectRoot . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'avatars' . DIRECTORY_SEPARATOR . $filename,
+                        $projectRoot . '/public/storage/avatars/' . $filename,
+                        $projectRoot . '/storage/app/public/avatars/' . $filename,
                     ];
-                    
                     foreach ($paths as $path) {
                         if (file_exists($path)) {
                             $mime = 'image/webp';
@@ -71,46 +97,27 @@
                     return null;
                 };
 
-                // Handle full URLs (http:// or https://)
                 if (preg_match('/^https?:\/\//i', $src)) {
-                    // Extract path from URL
                     $parsed = parse_url($src);
                     $path = $parsed['path'] ?? '';
-                    
-                    // Extract filename from /storage/avatars/xxx or /avatars/xxx
                     $filename = null;
-                    if (preg_match('#/storage/avatars/([^/\?]+)#', $path, $m)) {
-                        $filename = $m[1];
-                    } elseif (preg_match('#/avatars/([^/\?]+)#', $path, $m)) {
-                        $filename = $m[1];
-                    }
-                    
+                    if (preg_match('#/storage/avatars/([^/\?]+)#', $path, $m)) $filename = $m[1];
+                    elseif (preg_match('#/avatars/([^/\?]+)#', $path, $m)) $filename = $m[1];
                     if ($filename) {
-                        $base64 = $findAvatarBase64($filename);
-                        if ($base64) {
-                            return 'src="' . $base64 . '"';
-                        }
+                        $b64 = $findAvatarBase64($filename);
+                        if ($b64) return 'src="' . $b64 . '"';
                     }
                     return 'src=""';
                 }
 
-                // Handle /storage/avatars/xxx paths
-                if (preg_match('#^(/)?storage/avatars/([^/\?]+)#', $src, $pathMatches)) {
-                    $filename = $pathMatches[2];
-                    $base64 = $findAvatarBase64($filename);
-                    if ($base64) {
-                        return 'src="' . $base64 . '"';
-                    }
+                if (preg_match('#^(/)?storage/avatars/([^/\?]+)#', $src, $m)) {
+                    $b64 = $findAvatarBase64($m[2]);
+                    if ($b64) return 'src="' . $b64 . '"';
                     return 'src=""';
                 }
-
-                // Handle avatars/xxx paths (relative)
-                if (preg_match('#^avatars/([^/\?]+)#', $src, $pathMatches)) {
-                    $filename = $pathMatches[1];
-                    $base64 = $findAvatarBase64($filename);
-                    if ($base64) {
-                        return 'src="' . $base64 . '"';
-                    }
+                if (preg_match('#^avatars/([^/\?]+)#', $src, $m)) {
+                    $b64 = $findAvatarBase64($m[1]);
+                    if ($b64) return 'src="' . $b64 . '"';
                     return 'src=""';
                 }
 
@@ -118,85 +125,36 @@
             },
             $templateHtml
         );
-        
-        // FIX 3: Remove or simplify box-shadow (domPDF doesn't render them well)
-        $templateHtml = preg_replace(
-            '/box-shadow\s*:\s*[^;]+;/i',
-            '',
-            $templateHtml
-        );
-        
-        // FIX 4: Remove or simplify gradients (domPDF doesn't support them well)
-        $themeColor = $cv->theme_color ?? '#4F46E5';
-        $templateHtml = preg_replace(
-            '/background\s*:\s*linear-gradient\([^)]+\)/i',
-            'background-color: ' . $themeColor,
-            $templateHtml
-        );
-        
-        // Also handle background with gradient in shorthand
-        $templateHtml = preg_replace(
-            '/background\s*:\s*[^;]*linear-gradient[^;]+/i',
-            'background-color: ' . $themeColor,
-            $templateHtml
-        );
-        
-        // FIX 5: Ensure border-radius works (domPDF supports it but needs explicit values)
+
+        // ── Border-radius: Fix 50% → 9999px for DomPDF ──────────────────────
         $templateHtml = preg_replace(
             '/border-radius\s*:\s*50%/i',
             'border-radius: 9999px',
             $templateHtml
         );
-        
-        // FIX 6: Convert flexbox to table for better compatibility (but keep flex-wrap as is)
-        // Only convert flex containers that don't have flex-wrap
-        $templateHtml = preg_replace_callback(
-            '/style="([^"]*)"/i',
-            function($matches) {
-                $style = $matches[1];
-                // If it has display:flex but no flex-wrap, consider converting
-                // For now, keep flex but ensure it works
-                if (strpos($style, 'display: flex') !== false && strpos($style, 'flex-wrap') === false) {
-                    // Keep flex for now as domPDF 2.0+ supports it better
-                    // But ensure align-items and justify-content are preserved
-                }
-                return $matches[0];
-            },
-            $templateHtml
-        );
-        
-        // FIX 7: Ensure object-fit: cover works (domPDF may not support it, use width/height instead)
-        // This is already handled by the img tag having width: 100%; height: 100%
-        
-        // FIX 8: Remove opacity from rgba colors in borders (convert to solid)
+
+        // ── Colors: Convert rgba with high opacity → solid rgb ───────────────
         $templateHtml = preg_replace_callback(
             '/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/i',
-            function($matches) {
-                $r = $matches[1];
-                $g = $matches[2];
-                $b = $matches[3];
-                $a = floatval($matches[4]);
-                // If opacity is high enough, use solid color
-                if ($a > 0.8) {
-                    return "rgb($r, $g, $b)";
-                }
-                return $matches[0];
+            function($m) {
+                $a = floatval($m[4]);
+                if ($a > 0.8) return "rgb({$m[1]}, {$m[2]}, {$m[3]})";
+                return $m[0];
             },
             $templateHtml
         );
-        
-        // FIX 9: Ensure all images have explicit dimensions for better PDF rendering
+
+        // ── Images: Ensure explicit dimensions ───────────────────────────────
         $templateHtml = preg_replace_callback(
             '/<img([^>]*)>/i',
-            function($matches) {
-                $attrs = $matches[1];
-                // If no width/height, add them based on style
+            function($m) {
+                $attrs = $m[1];
                 if (strpos($attrs, 'width') === false && strpos($attrs, 'height') === false) {
-                    if (preg_match('/style="[^"]*width:\s*(\d+)px/i', $attrs, $wMatch)) {
-                        $attrs .= ' width="' . $wMatch[1] . '"';
+                    if (preg_match('/style="[^"]*width:\s*(\d+)px/i', $attrs, $w)) {
+                        $attrs .= ' width="' . $w[1] . '"';
                     }
-                    if (preg_match('/style="[^"]*height:\s*(\d+)px/i', $attrs, $hMatch)) {
-                        $attrs .= ' height="' . $hMatch[1] . '"';
+                    if (preg_match('/style="[^"]*height:\s*(\d+)px/i', $attrs, $h)) {
+                        $attrs .= ' height="' . $h[1] . '"';
                     }
                 }
                 return '<img' . $attrs . '>';

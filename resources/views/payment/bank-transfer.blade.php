@@ -15,7 +15,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold">Thông tin chuyển khoản</h1>
-                    <p class="text-blue-200 text-sm">Mã đơn hàng: #{{ str_pad($payment->id, 8, '0', STR_PAD_LEFT) }}</p>
+                    <p class="text-blue-200 text-sm">Mã đơn hàng: {{ Str::limit($pending['token'], 16, '') }}</p>
                 </div>
             </div>
         </div>
@@ -34,8 +34,8 @@
                     ['label' => 'Số tài khoản',      'value' => '1234567890'],
                     ['label' => 'Chủ tài khoản',     'value' => 'CONG TY CVACTIVE'],
                     ['label' => 'Chi nhánh',         'value' => 'Hà Nội'],
-                    ['label' => 'Số tiền',           'value' => number_format($payment->amount, 0, ',', '.') . '₫'],
-                    ['label' => 'Nội dung CK',       'value' => 'CVactive ' . str_pad($payment->id, 8, '0', STR_PAD_LEFT)],
+                    ['label' => 'Số tiền',           'value' => number_format($pending['amount'], 0, ',', '.') . '₫'],
+                    ['label' => 'Nội dung CK',       'value' => 'CVactive ' . $pending['token']],
                 ];
                 @endphp
                 @foreach($bankInfo as $item)

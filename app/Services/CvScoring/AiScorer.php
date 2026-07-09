@@ -3,6 +3,7 @@
 namespace App\Services\CvScoring;
 
 use App\Models\JobPost;
+use App\Support\PiiRedactor;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -117,16 +118,24 @@ class AiScorer
 
         $systemPrompt = 'You are a recruiter assistant. Compare a candidate CV against a job description and output strict JSON only — no prose, no markdown.';
 
-        $userPrompt = sprintf(
-            "Bài đăng: %s\nMô tả: %s\nKỹ năng JD yêu cầu: %s\nCV trích xuất: %s\nKỹ năng ứng viên khớp: %s\nKỹ năng ứng viên còn thiếu: %s\nPrior (match_ratio 0-1): %.4f\nTrả về JSON: {\"score\": <int 0-100>, \"summary\": \"<1 câu tiếng Việt ≤ 120 ký tự>\"}",
-            $jobPost->title,
-            $this->truncate((string) ($jobPost->description ?? ''), self::DESCRIPTION_LIMIT),
-            $keywordCsv,
-            $this->truncate($cvText, self::CV_TEXT_LIMIT),
-            $matchedCsv,
-            $missingCsv,
-            (float) $matchResult['match_ratio']
-        );
+            // M-6: redact PII trước khi gửi sang OpenAI — giảm thiểu
+            // data leakage nếu OpenAI bị compromise hoặc key bị lộ.
+            $sanitizedCvText = PiiRedactor::redact($cvText, self::CV_TEXT_LIMIT);
+            $sanitizedDescription = PiiRedactor::redact(
+                (string) ($jobPost->description ?? ''),
+                self::DESCRIPTION_LIMIT
+            );
+
+            $userPrompt = sprintf(
+                "Bài đăng: %s\nMô tả: %s\nKỹ năng JD yêu cầu: %s\nCV trích xuất: %s\nKỹ năng ứng viên khớp: %s\nKỹ năng ứng viên còn thiếu: %s\nPrior (match_ratio 0-1): %.4f\nTrả về JSON: {\"score\": <int 0-100>, \"summary\": \"<1 câu tiếng Việt ≤ 120 ký tự>\"}",
+                PiiRedactor::redact($jobPost->title, 200),
+                $sanitizedDescription,
+                $keywordCsv,
+                $sanitizedCvText,
+                $matchedCsv,
+                $missingCsv,
+                (float) $matchResult['match_ratio']
+            );
 
         return [
             'model'       => $model,

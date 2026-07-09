@@ -36,8 +36,8 @@
                             :aria-expanded="open"
                             aria-haspopup="true"
                             class="flex items-center gap-2 rounded-full p-0.5 hover:ring-2 hover:ring-indigo-100 transition focus:outline-none focus:ring-2 focus:ring-indigo-300">
-                            @if(auth()->user()->avatar)
-                                <img src="{{ asset('storage/' . auth()->user()->avatar) }}"
+                            @if(auth()->user()->avatar_url)
+                                <img src="{{ auth()->user()->avatar_url }}"
                                      alt="{{ auth()->user()->name }}"
                                      class="h-9 w-9 rounded-full object-cover border border-slate-200">
                             @else

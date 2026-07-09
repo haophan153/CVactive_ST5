@@ -26,7 +26,8 @@ class RegisterRequest extends FormRequest
             'name.required' => 'Họ tên là bắt buộc.',
             'email.required' => 'Email là bắt buộc.',
             'email.email' => 'Email không hợp lệ.',
-            'email.unique' => 'Email đã được sử dụng.',
+            // L-1: Ẩn thông báo cụ thể — chống enumerate email đã đăng ký
+            'email.unique' => 'Thông tin đăng ký không hợp lệ. Vui lòng kiểm tra lại.',
             'password.required' => 'Mật khẩu là bắt buộc.',
             'password.min' => 'Mật khẩu phải có ít nhất 8 ký tự.',
             'password.confirmed' => 'Xác nhận mật khẩu không khớp.',

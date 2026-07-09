@@ -12,12 +12,18 @@
             </svg>
         </div>
         <h1 class="text-2xl font-bold text-gray-900 mb-2">Đã hủy thanh toán</h1>
-        <p class="text-gray-500 mb-6">Bạn đã hủy giao dịch cho gói <strong>{{ $payment->plan->name }}</strong>. Không có khoản tiền nào bị trừ.</p>
+        <p class="text-gray-500 mb-6">
+            @if($planName)
+                Bạn đã hủy giao dịch cho gói <strong>{{ $planName }}</strong>. Không có khoản tiền nào bị trừ.
+            @else
+                Bạn đã hủy giao dịch. Không có khoản tiền nào bị trừ.
+            @endif
+        </p>
 
         <div class="space-y-3">
-            <a href="{{ route('payment.checkout', $payment->plan) }}"
+            <a href="{{ route('pricing') }}"
                 class="block w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition">
-                Thử lại
+                Thử lại với gói khác
             </a>
             <a href="{{ route('dashboard') }}"
                 class="block w-full py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition">
