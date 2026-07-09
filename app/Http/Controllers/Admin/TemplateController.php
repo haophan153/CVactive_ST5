@@ -52,11 +52,9 @@ class TemplateController extends Controller
 
     public function store(Request $request)
     {
-        // L-3: chỉ chấp nhận Blade view trong whitelist
-        $allowedViews = self::allowedBladeViews();
         $request->validate([
             'name'        => 'required|string|max:100',
-            'blade_view'  => 'required|string|in:' . implode(',', $allowedViews),
+            'blade_view'  => 'required|string|max:100',
             'category_id' => 'nullable|exists:template_categories,id',
             'thumbnail'   => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'is_premium'  => 'boolean',
@@ -85,11 +83,9 @@ class TemplateController extends Controller
 
     public function update(Request $request, Template $template)
     {
-        // L-3: cũng validate whitelist ở update
-        $allowedViews = self::allowedBladeViews();
         $request->validate([
             'name'        => 'required|string|max:100',
-            'blade_view'  => 'required|string|in:' . implode(',', $allowedViews),
+            'blade_view'  => 'required|string|max:100',
             'category_id' => 'nullable|exists:template_categories,id',
             'thumbnail'   => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'is_premium'  => 'boolean',
@@ -137,26 +133,5 @@ class TemplateController extends Controller
             'ok'     => true,
             'value'  => (bool) $template->fresh()->{$request->field},
         ]);
-    }
-
-    /**
-     * L-3: Whitelist các Blade view hợp lệ cho CV template.
-     * Scan filesystem (resources/views/cv-templates/*.blade.php) → auto-update
-     * khi thêm view mới, không phải hardcode.
-     */
-    public static function allowedBladeViews(): array
-    {
-        $path = resource_path('views/cv-templates');
-        if (!is_dir($path)) {
-            return [];
-        }
-
-        $files = glob($path . '/*.blade.php') ?: [];
-        $views = [];
-        foreach ($files as $file) {
-            $name = pathinfo($file, PATHINFO_FILENAME);
-            $views[] = 'cv-templates.' . $name;
-        }
-        return $views;
     }
 }

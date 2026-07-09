@@ -110,14 +110,7 @@ class User extends Authenticatable
     {
         $today = now()->toDateString();
 
-        // Resolve rõ ràng để IDE hiểu type, tránh PHP0418 warning
-        // với null-safe operator trên Carbon-cast attribute.
-        $resetDate = $this->ai_score_reset_at;
-        $lastResetString = $resetDate !== null
-            ? (\Carbon\Carbon::parse($resetDate))->toDateString()
-            : null;
-
-        if ($lastResetString !== $today) {
+        if ($this->ai_score_reset_at?->toDateString() !== $today) {
             // Update atomic chỉ khi ngày thực sự khác → tránh race
             \DB::table('users')
                 ->where('id', $this->id)

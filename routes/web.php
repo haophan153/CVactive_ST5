@@ -22,7 +22,10 @@ Route::get('/contact', function () {
     return view('contact');
 })->name('contact');
 
-Route::post('/contact', [\App\Http\Controllers\ContactController::class, 'store'])->name('contact.store');
+// Contact form — throttle 5 req/min/IP chống spam
+Route::post('/contact', [\App\Http\Controllers\ContactController::class, 'store'])
+    ->name('contact.store')
+    ->middleware('throttle:5,1');
 
 Route::get('/faq', [FaqController::class, 'index'])->name('faq');
 
@@ -30,9 +33,16 @@ Route::get('/blog', [\App\Http\Controllers\BlogController::class, 'index'])->nam
 Route::get('/blog/{slug}', [\App\Http\Controllers\BlogController::class, 'show'])->name('blog.show');
 
 // CV public share (no auth)
-Route::get('/cv/s/{token}', [CvController::class, 'share'])->name('cv.public');
-Route::get('/cv/s/{token}/pdf', [CvController::class, 'exportPdfByShareToken'])->name('cv.public.pdf');
-Route::get('/cv/s/{token}/png', [CvController::class, 'exportPngByShareToken'])->name('cv.public.png');
+// L6: Throttle CV share để chống scan token / spam view
+Route::middleware('throttle:60,1')->group(function () {
+    Route::get('/cv/s/{token}', [CvController::class, 'share'])->name('cv.public');
+    Route::get('/cv/s/{token}/pdf', [CvController::class, 'exportPdfByShareToken'])
+        ->middleware('throttle:10,1')   // PDF tốn tài nguyên, throttle thấp hơn
+        ->name('cv.public.pdf');
+    Route::get('/cv/s/{token}/png', [CvController::class, 'exportPngByShareToken'])
+        ->middleware('throttle:10,1')
+        ->name('cv.public.png');
+});
 
 // ── Authenticated + verified routes ───────────────────────────────────────
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -47,25 +57,39 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/cv/{cv}', [CvController::class, 'update'])->name('cv.update');
     Route::delete('/cv/{cv}', [CvController::class, 'destroy'])->name('cv.destroy');
 
-    // CV Sections (AJAX)
-    Route::post('/cv/{cv}/sections', [CvController::class, 'saveSections'])->name('cv.sections.save');
-    Route::post('/cv/{cv}/sections/add', [CvController::class, 'addSection'])->name('cv.sections.add');
-    Route::delete('/cv/{cv}/sections/{section}', [CvController::class, 'deleteSection'])->name('cv.sections.delete');
+    // CV Sections (AJAX) — L2: throttle 60/min chống spam auto-save + DoS DB write
+    Route::post('/cv/{cv}/sections', [CvController::class, 'saveSections'])
+        ->middleware('throttle:60,1')
+        ->name('cv.sections.save');
+    Route::post('/cv/{cv}/sections/add', [CvController::class, 'addSection'])
+        ->middleware('throttle:30,1')
+        ->name('cv.sections.add');
+    Route::delete('/cv/{cv}/sections/{section}', [CvController::class, 'deleteSection'])
+        ->middleware('throttle:30,1')
+        ->name('cv.sections.delete');
 
     // CV Template switch
     Route::post('/cv/{cv}/template', [CvController::class, 'changeTemplate'])->name('cv.template.change');
 
     // CV Avatar
-    Route::post('/cv/{cv}/avatar', [CvController::class, 'uploadAvatar'])->name('cv.avatar.upload');
+    Route::post('/cv/{cv}/avatar', [CvController::class, 'uploadAvatar'])
+        ->middleware('throttle:10,1')
+        ->name('cv.avatar.upload');
     Route::delete('/cv/{cv}/avatar', [CvController::class, 'deleteAvatar'])->name('cv.avatar.delete');
 
-    // CV Preview (AJAX)
-    Route::get('/cv/{cv}/preview', [CvController::class, 'getPreview'])->name('cv.preview');
+    // CV Preview (AJAX) — throttle để chống spam render
+    Route::get('/cv/{cv}/preview', [CvController::class, 'getPreview'])
+        ->middleware('throttle:30,1')
+        ->name('cv.preview');
 
-    // CV Share & Export
+    // CV Share & Export — L5: throttle vì PDF generation tốn tài nguyên
     Route::post('/cv/{cv}/share', [CvController::class, 'getShareLink'])->name('cv.share');
-    Route::get('/cv/{cv}/pdf', [CvController::class, 'exportPdf'])->name('cv.pdf');
-    Route::get('/cv/{cv}/png', [CvController::class, 'exportPng'])->name('cv.png');
+    Route::get('/cv/{cv}/pdf', [CvController::class, 'exportPdf'])
+        ->middleware('throttle:10,1')
+        ->name('cv.pdf');
+    Route::get('/cv/{cv}/png', [CvController::class, 'exportPng'])
+        ->middleware('throttle:10,1')
+        ->name('cv.png');
 
     // Templates
     Route::get('/templates', [TemplateController::class, 'index'])->name('templates.index');
@@ -76,15 +100,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::post('/profile/avatar', [ProfileController::class, 'uploadAvatar'])->name('profile.avatar');
+    Route::delete('/profile/avatar', [ProfileController::class, 'removeAvatar'])->name('profile.avatar.remove');
 });
 
 // ── Payment routes ────────────────────────────────────────────────────────
 Route::middleware(['auth', 'verified'])->prefix('payment')->name('payment.')->group(function () {
     Route::get('/checkout/{plan}', [\App\Http\Controllers\PaymentController::class, 'checkout'])->name('checkout');
     Route::post('/process/{plan}', [\App\Http\Controllers\PaymentController::class, 'process'])->name('process');
-    Route::get('/bank/{payment}', [\App\Http\Controllers\PaymentController::class, 'bankTransfer'])->name('bank');
+    Route::get('/bank/{token}', [\App\Http\Controllers\PaymentController::class, 'bankTransfer'])->name('bank');
     Route::get('/success/{payment}', [\App\Http\Controllers\PaymentController::class, 'success'])->name('success');
-    Route::get('/cancel/{payment}', [\App\Http\Controllers\PaymentController::class, 'cancel'])->name('cancel');
+    Route::get('/cancel', [\App\Http\Controllers\PaymentController::class, 'cancel'])->name('cancel');
     Route::get('/history', [\App\Http\Controllers\PaymentController::class, 'history'])->name('history');
 });
 
@@ -99,8 +124,10 @@ Route::get('/payment/fail', fn() => view('payment.fail'))->name('payment.fail');
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
 
-    // Global search
-    Route::get('/search', \App\Http\Controllers\Admin\SearchController::class)->name('search');
+    // Global search — throttle 60 req/min chống DoS DB
+    Route::get('/search', \App\Http\Controllers\Admin\SearchController::class)
+        ->middleware('throttle:60,1')
+        ->name('search');
 
     // Users
     Route::resource('users', \App\Http\Controllers\Admin\UserController::class)->except(['create', 'store']);
@@ -166,7 +193,10 @@ Route::middleware(['auth', 'hr'])->prefix('hr')->name('hr.')->group(function () 
     Route::post('/job-posts/{jobPost}/close', [JobPostController::class, 'close'])->name('job-posts.close');
 
     // Tìm kiếm CV ứng viên theo kỹ năng/kinh nghiệm
-    Route::get('/job-posts/{jobPost}/search-cv', [App\Http\Controllers\JobApplicationController::class, 'searchCv'])->name('job-posts.search-cv');
+    // C5: throttle searchCv để chống HR spam kéo hệ thống extract PDF liên tục
+    Route::get('/job-posts/{jobPost}/search-cv', [App\Http\Controllers\JobApplicationController::class, 'searchCv'])
+        ->middleware('throttle:30,1')
+        ->name('job-posts.search-cv');
 
     // Ứng viên theo từng bài đăng
     Route::get('/job-posts/{jobPost}/applications', [App\Http\Controllers\JobApplicationController::class, 'hrApplicationsByJob'])->name('job-posts.applications');
@@ -184,26 +214,34 @@ Route::middleware(['auth', 'hr'])->prefix('hr')->name('hr.')->group(function () 
     // 1. Admin cũng cần tải CV được
     // 2. Authorization được xử lý bên trong controller qua Gate/Policy
     // 3. Đảm bảo chỉ chủ sở hữu job post mới tải được CV
+    // L7: throttle 30 lượt tải/phút/user để chống spam download + đầy disk
     Route::get('/applications/{application}/cv', [App\Http\Controllers\JobApplicationController::class, 'downloadCv'])
         ->name('applications.cv.download')
-        ->middleware('auth');
+        ->middleware(['auth', 'throttle:30,1']);
 
     // Optional: Temporary signed URL cho CV (dùng trong email)
     Route::get('/applications/{application}/cv-url', [App\Http\Controllers\JobApplicationController::class, 'getSignedUrl'])
         ->name('applications.cv.url')
         ->middleware('auth');
 
-    // AI CV Scoring
+    // AI CV Scoring — L4: throttle chống spam đốt tiền OpenAI
     Route::post('/job-posts/{jobPost}/ai-score', [App\Http\Controllers\Hr\AiScoreController::class, 'bulkScore'])
-        ->name('job-posts.ai-score');
+        ->name('job-posts.ai-score')
+        ->middleware('throttle:5,1');
     Route::post('/applications/{application}/rescore', [App\Http\Controllers\Hr\AiScoreController::class, 'rescore'])
-        ->name('applications.rescore');
+        ->name('applications.rescore')
+        ->middleware('throttle:10,1');
 });
 
 // Public job listings (advanced filter page)
-Route::get('/jobs', [JobListingController::class, 'index'])->name('jobs.index');
-Route::get('/jobs/{jobPost}', [JobListingController::class, 'show'])->name('jobs.show');
-Route::post('/jobs/{jobPost}/apply', [App\Http\Controllers\JobApplicationController::class, 'apply'])->name('jobs.apply');
+// L1: Throttle job listings + apply để chống spam đơn ứng tuyển
+Route::middleware('throttle:30,1')->group(function () {
+    Route::get('/jobs', [JobListingController::class, 'index'])->name('jobs.index');
+    Route::get('/jobs/{jobPost}', [JobListingController::class, 'show'])->name('jobs.show');
+    Route::post('/jobs/{jobPost}/apply', [App\Http\Controllers\JobApplicationController::class, 'apply'])
+        ->middleware('throttle:3,1')   // Mỗi user chỉ được apply 3 lần/phút cho 1 job
+        ->name('jobs.apply');
+});
 
 // User routes - lịch sử ứng tuyển
 Route::middleware(['auth', 'verified'])->prefix('my-applications')->name('my-applications.')->group(function () {

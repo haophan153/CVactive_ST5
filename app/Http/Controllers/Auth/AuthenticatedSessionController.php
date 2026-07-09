@@ -21,20 +21,11 @@ class AuthenticatedSessionController extends Controller
 
     /**
      * Handle an incoming authentication request.
-     *
-     * L-10: regenerate session ID trước khi gọi authenticate() — tránh
-     * session fixation nếu attacker pre-seed session ID trước đó.
-     * Trước đây: regenerate SAU khi Auth::attempt succeed — nếu attempt
-     * throws exception, session vẫn giữ attacker ID.
      */
     public function store(LoginRequest $request): RedirectResponse
     {
-        // L-10: regenerate trước auth attempt
-        $request->session()->regenerate();
-
         $request->authenticate();
 
-        // L-10: regenerate lại lần nữa sau auth — defense-in-depth
         $request->session()->regenerate();
 
         return redirect()->intended(route('dashboard', absolute: false));

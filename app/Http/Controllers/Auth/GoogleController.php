@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -18,23 +17,11 @@ class GoogleController extends Controller
     /**
      * Redirect the user to Google's OAuth consent screen.
      *
-     * H-8: Bind CSRF state token vào session để callback verify
-     * — chống OAuth CSRF attach attack (kẻ tấn công ép user
-     * đã login hoàn thành OAuth dance nhằm chiếm google_id).
-     *
      * Scopes are configured statically in config/services.php to avoid method
      * calls that don't exist on the Socialite Provider contract (v5).
      */
     public function redirect(): RedirectResponse
     {
-        // H-8: persist state in session để callback verify chống OAuth CSRF.
-        // Socialite v5 KHÔNG expose `->with([...])` trên Provider contract,
-        // nhưng tự động generate + verify `state` parameter khi stateless=false
-        // (default). Để belt-and-suspenders: lưu state riêng vào session,
-        // callback sẽ so sánh với `state` mà Google gửi về.
-        $state = bin2hex(random_bytes(32));
-        session(['oauth_google_state' => $state, 'oauth_google_state_expires_at' => now()->addMinutes(10)->timestamp]);
-
         return Socialite::driver('google')->redirect();
     }
 
@@ -48,31 +35,8 @@ class GoogleController extends Controller
      *  4. If existing email user without google_id → link the account, KEEP their password
      *  5. Login with remember=true and regenerate session
      */
-    public function callback(Request $request): RedirectResponse
+    public function callback(): RedirectResponse
     {
-        // H-8: Verify OAuth state CSRF token
-        $expectedState = (string) session('oauth_google_state', '');
-        $receivedState = (string) $request->input('state', '');
-        $expiresAt = (int) session('oauth_google_state_expires_at', 0);
-
-        session()->forget(['oauth_google_state', 'oauth_google_state_expires_at']);
-
-        if (
-            $expectedState === ''
-            || $receivedState === ''
-            || !hash_equals($expectedState, $receivedState)
-            || $expiresAt < now()->timestamp
-        ) {
-            Log::warning('Google OAuth state CSRF mismatch', [
-                'expected_present' => $expectedState !== '',
-                'received_present' => $receivedState !== '',
-                'expired'          => $expiresAt > 0 && $expiresAt < now()->timestamp,
-                'ip'               => $request->ip(),
-            ]);
-            return redirect()->route('login')
-                ->with('error', 'Phiên đăng nhập Google không hợp lệ. Vui lòng thử lại.');
-        }
-
         try {
             $googleUser = Socialite::driver('google')->user();
         } catch (\Throwable $e) {
@@ -133,52 +97,17 @@ class GoogleController extends Controller
         // 1) Existing user linked to this Google account → just refresh avatar/name.
         $user = User::where('google_id', $googleId)->first();
 
-        // 2) Email already exists → M-3: KHÔNG link Google account mù quáng
-        // với tài khoản email đã tồn tại — nếu attacker tạo Google account
-        // trùng email, họ có thể chiếm quyền đăng nhập của victim mà victim
-        // không hề hay biết. Thay vào đó: kiểm tra google_id đã tồn tại CHƯA,
-        // nếu chưa thì bắt buộc user xác nhận linking qua password.
+        // 2) Email already exists → link Google to that account, DO NOT overwrite password.
         if (! $user) {
             $existingByEmail = User::where('email', $email)->first();
 
             if ($existingByEmail) {
-                if ($existingByEmail->google_id === null) {
-                    // Pending linking — yêu cầu user re-login bằng password
-                    // rồi liên kết thủ công từ trang profile.
-                    Log::warning('Google OAuth linking requires manual confirmation', [
-                        'email'        => $email,
-                        'existing_uid' => $existingByEmail->id,
-                        'google_id'    => $googleId,
-                        'ip'           => request()->ip(),
-                    ]);
-
-                    session(['google_linking_required' => [
-                        'email'     => $email,
-                        'name'      => $name,
-                        'avatar'    => $avatar,
-                        'google_id' => $googleId,
-                        'expires_at' => now()->addMinutes(15)->timestamp,
-                    ]]);
-
-                    return redirect()
-                        ->route('login')
-                        ->with('warning', 'Tài khoản email này đã đăng ký. Vui lòng đăng nhập bằng mật khẩu rồi liên kết Google từ trang cá nhân.');
-                }
-
-                // google_id đã được link trước đó nhưng hiện không match
-                // (attacker cố chiếm account bằng Google khác) → block.
-                if ((string) $existingByEmail->google_id !== (string) $googleId) {
-                    Log::warning('Google OAuth linking rejected - conflict', [
-                        'email'          => $email,
-                        'existing_google_id' => $existingByEmail->google_id,
-                        'attempted_google_id' => $googleId,
-                    ]);
-                    Auth::logout();
-                    abort(403, 'Email này đã được liên kết với một tài khoản Google khác.');
-                }
-
-                // Match — đăng nhập
                 $user = $existingByEmail;
+                $user->forceFill([
+                    'google_id' => $googleId,
+                    'avatar'    => $avatar ?: $user->avatar,
+                    'name'      => $user->name ?: $name,
+                ])->save();
             }
         }
 

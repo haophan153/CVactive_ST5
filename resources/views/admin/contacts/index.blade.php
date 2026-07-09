@@ -1,16 +1,16 @@
-@extends('layouts.admin')
-@section('title', 'Hß╗Öp th╞░ li├¬n hß╗ç')
-@section('page-title', 'Hß╗Öp th╞░ li├¬n hß╗ç')
+﻿@extends('layouts.admin')
+@section('title', 'Hộp thư liên hệ')
+@section('page-title', 'Hộp thư liên hệ')
 
 @section('breadcrumb')
-<span class="text-slate-900 font-bold">Li├¬n hß╗ç</span>
+<span class="text-slate-900 font-bold">Liên hệ</span>
 @endsection
 
 @section('content')
 
 <div x-data="{ selected: [], applyBulk(action) {
-    if (this.selected.length === 0) { alert('Chß╗ìn ├¡t nhß║Ñt 1 li├¬n hß╗ç.'); return; }
-    if (!confirm('├üp dß╗Ñng cho ' + this.selected.length + ' li├¬n hß╗ç?')) return;
+    if (this.selected.length === 0) { alert('Chọn ít nhất 1 liên hệ.'); return; }
+    if (!confirm('Áp dụng cho ' + this.selected.length + ' liên hệ?')) return;
     this.$refs.form.action.value = action;
     this.$refs.form.submit();
 } }">
@@ -18,15 +18,15 @@
 {{-- Stat cards --}}
 <div class="grid grid-cols-3 gap-4 mb-6">
     <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
-        <p class="text-xs font-semibold text-slate-500">Tß╗òng</p>
+        <p class="text-xs font-semibold text-slate-500">Tổng</p>
         <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ number_format($stats['total']) }}</p>
     </div>
     <div class="bg-white rounded-2xl border border-rose-200/80 shadow-sm p-5">
-        <p class="text-xs font-semibold text-slate-500">Ch╞░a ─æß╗ìc</p>
+        <p class="text-xs font-semibold text-slate-500">Chưa đọc</p>
         <p class="text-2xl font-extrabold text-rose-600 mt-1">{{ number_format($stats['unread']) }}</p>
     </div>
     <div class="bg-white rounded-2xl border border-emerald-200/80 shadow-sm p-5">
-        <p class="text-xs font-semibold text-slate-500">H├┤m nay</p>
+        <p class="text-xs font-semibold text-slate-500">Hôm nay</p>
         <p class="text-2xl font-extrabold text-emerald-600 mt-1">{{ number_format($stats['today']) }}</p>
     </div>
 </div>
@@ -35,22 +35,22 @@
 <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 mb-5">
     <form method="GET" class="flex flex-wrap gap-3 items-end">
         <div class="flex-1 min-w-52">
-            <label class="block text-xs font-semibold text-slate-500 mb-1.5">T├¼m t├¬n / email / subject</label>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Tìm tên / email / subject</label>
             <div class="relative">
                 <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Nhß║¡p tß╗½ kh├│a..."
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Nhập từ khóa..."
                     class="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white transition-all placeholder-slate-400">
             </div>
         </div>
         <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Trß║íng th├íi</label>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Trạng thái</label>
             <select name="is_read" class="text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white transition-all">
-                <option value="">Tß║Ñt cß║ú</option>
-                <option value="unread" {{ request('is_read') === 'unread' ? 'selected' : '' }}>Ch╞░a ─æß╗ìc</option>
-                <option value="read"   {{ request('is_read') === 'read'   ? 'selected' : '' }}>─É├ú ─æß╗ìc</option>
+                <option value="">Tất cả</option>
+                <option value="unread" {{ request('is_read') === 'unread' ? 'selected' : '' }}>Chưa đọc</option>
+                <option value="read"   {{ request('is_read') === 'read'   ? 'selected' : '' }}>Đã đọc</option>
             </select>
         </div>
-        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-md shadow-indigo-500/20">Lß╗ìc</button>
+        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-md shadow-indigo-500/20">Lọc</button>
     </form>
 </div>
 
@@ -61,12 +61,12 @@
     <template x-for="id in selected" :key="id">
         <input type="hidden" name="ids[]" :value="id">
     </template>
-    <span class="text-sm font-semibold text-indigo-700" x-text="'─É├ú chß╗ìn ' + selected.length + ' li├¬n hß╗ç'"></span>
+    <span class="text-sm font-semibold text-indigo-700" x-text="'Đã chọn ' + selected.length + ' liên hệ'"></span>
     <div class="w-px h-5 bg-indigo-200"></div>
-    <button type="button" @click="applyBulk('mark_read')" class="px-3 py-1.5 text-sm bg-emerald-50 text-emerald-700 font-semibold rounded-xl hover:bg-emerald-100 transition-colors">─É├ính dß║Ñu ─æ├ú ─æß╗ìc</button>
-    <button type="button" @click="applyBulk('mark_unread')" class="px-3 py-1.5 text-sm bg-amber-50 text-amber-700 font-semibold rounded-xl hover:bg-amber-100 transition-colors">─É├ính dß║Ñu ch╞░a ─æß╗ìc</button>
-    <button type="button" @click="applyBulk('delete')" class="px-3 py-1.5 text-sm bg-red-50 text-red-600 font-semibold rounded-xl hover:bg-red-100 transition-colors">X├│a</button>
-    <button type="button" @click="selected=[]; document.querySelectorAll('.contact-checkbox').forEach(c => c.checked=false)" class="ml-auto px-3 py-1.5 text-sm bg-white text-slate-500 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">Bß╗Å chß╗ìn</button>
+    <button type="button" @click="applyBulk('mark_read')" class="px-3 py-1.5 text-sm bg-emerald-50 text-emerald-700 font-semibold rounded-xl hover:bg-emerald-100 transition-colors">Đánh dấu đã đọc</button>
+    <button type="button" @click="applyBulk('mark_unread')" class="px-3 py-1.5 text-sm bg-amber-50 text-amber-700 font-semibold rounded-xl hover:bg-amber-100 transition-colors">Đánh dấu chưa đọc</button>
+    <button type="button" @click="applyBulk('delete')" class="px-3 py-1.5 text-sm bg-red-50 text-red-600 font-semibold rounded-xl hover:bg-red-100 transition-colors">Xóa</button>
+    <button type="button" @click="selected=[]; document.querySelectorAll('.contact-checkbox').forEach(c => c.checked=false)" class="ml-auto px-3 py-1.5 text-sm bg-white text-slate-500 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">Bỏ chọn</button>
 </form>
 
 {{-- Inbox 2 col --}}
@@ -89,7 +89,7 @@
                 </a>
             </label>
             @empty
-            <p class="p-8 text-center text-slate-400 text-sm">Ch╞░a c├│ li├¬n hß╗ç n├áo.</p>
+            <p class="p-8 text-center text-slate-400 text-sm">Chưa có liên hệ nào.</p>
             @endforelse
         </div>
         @if($contacts->hasPages())
@@ -102,12 +102,12 @@
         <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
             <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
                 <div>
-                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Tß╗½</p>
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Từ</p>
                     <p class="font-bold text-slate-900">{{ $selected->name }} <span class="text-slate-400 font-normal text-sm">&lt;{{ $selected->email }}&gt;</span></p>
                 </div>
                 <a href="mailto:{{ $selected->email }}?subject=Re: {{ rawurlencode($selected->subject) }}" class="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl transition-all shadow-md shadow-indigo-500/20">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8"/></svg>
-                    Trß║ú lß╗¥i
+                    Trả lời
                 </a>
             </div>
             <div class="p-6">
@@ -118,11 +118,11 @@
             <div class="px-6 py-3.5 border-t border-slate-100 flex items-center justify-between bg-slate-50">
                 <form action="{{ route('admin.contacts.toggle-read', $selected) }}" method="POST">
                     @csrf
-                    <button class="text-sm font-semibold text-slate-500 hover:text-indigo-600 transition-colors">{{ $selected->is_read ? '─É├ính dß║Ñu ch╞░a ─æß╗ìc' : '─É├ính dß║Ñu ─æ├ú ─æß╗ìc' }}</button>
+                    <button class="text-sm font-semibold text-slate-500 hover:text-indigo-600 transition-colors">{{ $selected->is_read ? 'Đánh dấu chưa đọc' : 'Đánh dấu đã đọc' }}</button>
                 </form>
-                <form action="{{ route('admin.contacts.destroy', $selected) }}" method="POST" onsubmit="return confirm('X├│a li├¬n hß╗ç n├áy?')">
+                <form action="{{ route('admin.contacts.destroy', $selected) }}" method="POST" onsubmit="return confirm('Xóa liên hệ này?')">
                     @csrf @method('DELETE')
-                    <button class="text-sm font-semibold text-red-500 hover:text-red-700 transition-colors">X├│a</button>
+                    <button class="text-sm font-semibold text-red-500 hover:text-red-700 transition-colors">Xóa</button>
                 </form>
             </div>
         </div>
@@ -131,7 +131,7 @@
             <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <svg class="w-8 h-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8"/></svg>
             </div>
-            <p class="font-semibold text-slate-500">Chß╗ìn mß╗Öt li├¬n hß╗ç ─æß╗â xem chi tiß║┐t</p>
+            <p class="font-semibold text-slate-500">Chọn một liên hệ để xem chi tiết</p>
         </div>
         @endif
     </div>

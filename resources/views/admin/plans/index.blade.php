@@ -1,18 +1,18 @@
-@extends('layouts.admin')
-@section('title', 'Quß║ún l├╜ G├│i dß╗ïch vß╗Ñ')
-@section('page-title', 'G├│i dß╗ïch vß╗Ñ')
+﻿@extends('layouts.admin')
+@section('title', 'Quản lý Gói dịch vụ')
+@section('page-title', 'Gói dịch vụ')
 
 @section('breadcrumb')
-<span class="text-slate-900 font-bold">G├│i dß╗ïch vß╗Ñ</span>
+<span class="text-slate-900 font-bold">Gói dịch vụ</span>
 @endsection
 
 @section('content')
 
 <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
-    <p class="text-sm font-semibold text-slate-500">Cß║Ñu h├¼nh gi├í + t├¡nh n─âng cho tß╗½ng g├│i</p>
+    <p class="text-sm font-semibold text-slate-500">Cấu hình giá + tính năng cho từng gói</p>
     <a href="{{ route('admin.plans.create') }}" class="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-md shadow-indigo-500/20">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
-        Th├¬m g├│i
+        Thêm gói
     </a>
 </div>
 
@@ -33,8 +33,8 @@
                 </form>
             </div>
             <div class="mt-4">
-                <span class="text-3xl font-extrabold">{{ number_format($plan->price, 0, ',', '.') }}Γé½</span>
-                <span class="text-sm opacity-70 font-medium">/th├íng</span>
+                <span class="text-3xl font-extrabold">{{ number_format($plan->price, 0, ',', '.') }}₫</span>
+                <span class="text-sm opacity-70 font-medium">/tháng</span>
             </div>
         </div>
 
@@ -44,7 +44,7 @@
                     <span class="w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
                         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
                     </span>
-                    Tß╗æi ─æa <strong class="font-extrabold">{{ $plan->cv_limit ?? 'Γê₧' }}</strong> CV
+                    Tối đa <strong class="font-extrabold">{{ $plan->cv_limit ?? '∞' }}</strong> CV
                 </li>
                 @if(is_array($plan->features))
                     @foreach(array_slice($plan->features, 0, 5) as $f)
@@ -65,17 +65,17 @@
                 </div>
                 <div class="bg-emerald-50 rounded-xl p-3 text-center">
                     <p class="text-xs font-semibold text-slate-500">Doanh thu</p>
-                    <p class="font-extrabold text-emerald-600 text-lg mt-0.5">{{ number_format($plan->revenue ?? 0, 0, ',', '.') }}Γé½</p>
+                    <p class="font-extrabold text-emerald-600 text-lg mt-0.5">{{ number_format($plan->revenue ?? 0, 0, ',', '.') }}₫</p>
                 </div>
             </div>
         </div>
 
         <div class="px-6 py-3.5 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-3">
-            <a href="{{ route('admin.plans.edit', $plan) }}" class="text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors">Chß╗ënh sß╗¡a</a>
+            <a href="{{ route('admin.plans.edit', $plan) }}" class="text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors">Chỉnh sửa</a>
             @if($plan->users_count === 0)
-            <form action="{{ route('admin.plans.destroy', $plan) }}" method="POST" onsubmit="return confirm('X├│a g├│i {{ $plan->name }}?')" class="inline">
+            <form action="{{ route('admin.plans.destroy', $plan) }}" method="POST" onsubmit="return confirm('Xóa gói {{ $plan->name }}?')" class="inline">
                 @csrf @method('DELETE')
-                <button class="text-sm font-bold text-red-500 hover:text-red-700 transition-colors">X├│a</button>
+                <button class="text-sm font-bold text-red-500 hover:text-red-700 transition-colors">Xóa</button>
             </form>
             @endif
         </div>
@@ -88,7 +88,7 @@
     <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
         <svg class="w-8 h-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
     </div>
-    <p class="font-semibold">Ch╞░a c├│ g├│i dß╗ïch vß╗Ñ n├áo. Tß║ío g├│i ─æß║ºu ti├¬n!</p>
+    <p class="font-semibold">Chưa có gói dịch vụ nào. Tạo gói đầu tiên!</p>
 </div>
 @endif
 

@@ -211,30 +211,14 @@ class PaymentController extends Controller
     {
         $data = $request->all();
 
-        // H-7: IPN bắt buộc phải verify chữ ký — không có ngoại lệ.
-        // Không verify = cho phép attacker spam unique transId để pollution DB /
-        // gây nhầm lẫn forensic khi sự cố.
-        if (!$this->momo->verifyCallback($data)) {
-            Log::warning('MoMo IPN signature invalid', [
-                'transId'  => $data['transId'] ?? null,
-                'orderId'  => $data['orderId'] ?? null,
-                'ip'       => $request->ip(),
-            ]);
-            return response()->json(['status' => 'invalid_signature'], 400);
-        }
-
-        // Validate input tối thiểu
-        if (empty($data['transId']) || empty($data['orderId'])) {
-            return response()->json(['status' => 'missing_params'], 422);
-        }
-
-        $existingByTxn = Payment::where('transaction_id', (string) $data['transId'])->first();
+        $existingByTxn = !empty($data['transId'])
+            ? Payment::where('transaction_id', (string)$data['transId'])->first()
+            : null;
         if ($existingByTxn) {
             return response()->json(['status' => 'ok']);
         }
 
-        // IPN MoMo không tạo Payment vì thiếu session context (user_id, plan_id,
-        // amount). Return URL (momoReturn) + cross-check với plan amount mới tạo.
+        // IPN MoMo không tạo Payment vì thiếu session context.
         return response()->json(['status' => 'ok']);
     }
 

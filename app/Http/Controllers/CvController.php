@@ -10,7 +10,6 @@ use App\Models\Cv;
 use App\Models\CvSection;
 use App\Models\CvSectionItem;
 use App\Models\Template;
-use App\Support\CvHtmlSanitizer;
 
 class CvController extends Controller
 {
@@ -311,23 +310,17 @@ class CvController extends Controller
      */
     public function share(string $token)
     {
-        $share = \App\Models\CvShare::where('share_token', $token)->firstOrFail();
-
-        // M-4: validate revoked OR expired → reject
-        if (!$share->isActive()) {
-            abort(404, 'Share link đã bị thu hồi hoặc hết hạn.');
-        }
+        $share = \App\Models\CvShare::where('share_token', $token)
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->firstOrFail();
 
         // M2: Atomic increment + dùng DB::raw cho view_count để tránh race
         // concurrent request cùng truy cập share token
         \DB::table('cv_shares')
             ->where('id', $share->id)
             ->increment('view_count');
-
-        // Audit trail + rate-limit best-effort
-        \DB::table('cv_shares')
-            ->where('id', $share->id)
-            ->update(['last_viewed_at' => now()]);
 
         $share->refresh();
         $cv = $share->cv->load(['template', 'sections.items']);
@@ -348,16 +341,14 @@ class CvController extends Controller
 
         $cv = $share->cv->load(['template', 'sections.items']);
 
-        // C-3: PDF generate — chống DoS via payload cực lớn
+        // L5: Chống DoS qua PDF generation
         set_time_limit(30);
         ini_set('memory_limit', '256M');
 
         $html = view('cv.pdf', compact('cv'))->render();
 
-        // C-3: Sanitize HTML để chống XSS/file:// scheme payload trong CV content
-        $html = CvHtmlSanitizer::purify($html);
-
         // Ensure all fonts are 'dejavusans' (lowercase, no space) for full Unicode / Vietnamese support
+        // dompdf only recognizes 'dejavusans' (not 'DejaVu Sans' with space)
         $html = str_replace(
             "font-family: 'Helvetica', 'Arial', sans-serif",
             "font-family: 'dejavusans', sans-serif",
@@ -365,14 +356,11 @@ class CvController extends Controller
         );
         $html = preg_replace('/font-family\s*:\s*["\'][^"\']+["\']/i', "font-family: 'dejavusans'", $html);
 
-        // C-3: Chống LFI/SSRF — tắt local file access, không cho phép
-        // DomPDF fetch file://, phar://, hoặc các scheme ngoài.
         $pdf = Pdf::loadHTML($html);
         $pdf->setPaper('A4', 'portrait');
-        $pdf->setOption('enable-local-file-access', false);
+        $pdf->setOption('enable-local-file-access', true);
         $pdf->setOption('isHtml5ParserEnabled', true);
         $pdf->setOption('isRemoteEnabled', false);
-        $pdf->setOption('chroot', realpath(base_path()));
 
         return $pdf->download(Str::slug($cv->title) . '.pdf');
     }
@@ -402,53 +390,16 @@ class CvController extends Controller
 
         $share = $cv->shares()->first();
 
-        // M-4: Nếu share hết hạn hoặc đã revoke → tạo token mới luôn.
-        // Nếu dùng token cũ vĩnh viễn sẽ leak PII sau khi share email forward.
-        $needNewToken = !$share
-            || ($share->expires_at !== null && $share->expires_at->isPast());
-
-        if ($needNewToken) {
-            if ($share) {
-                $share->update([
-                    'share_token' => Str::random(32),
-                    'expires_at'  => now()->addDays(30),  // M-4: default 30-day TTL
-                ]);
-            } else {
-                $share = \App\Models\CvShare::create([
-                    'cv_id'       => $cv->id,
-                    'share_token' => Str::random(32),
-                    'expires_at'  => now()->addDays(30),
-                ]);
-            }
+        if (!$share) {
+            $share = \App\Models\CvShare::create([
+                'cv_id'       => $cv->id,
+                'share_token' => Str::random(32),
+            ]);
         }
 
         $url = route('cv.public', $share->share_token);
 
-        return response()->json([
-            'success'    => true,
-            'url'        => $url,
-            'expires_at' => $share->expires_at?->toIso8601String(),
-        ]);
-    }
-
-    /**
-     * M-4 + L-11: Thu hồi share link ngay lập tức (xóa token, không xóa record
-     * để giữ audit trail).
-     */
-    public function revokeShare(Cv $cv)
-    {
-        $this->authorize('update', $cv);
-
-        $share = $cv->shares()->first();
-        if ($share) {
-            $share->update([
-                'share_token' => null,
-                'expires_at'  => now()->subDay(),  // Mark expired
-                'revoked_at'  => now(),
-            ]);
-        }
-
-        return response()->json(['success' => true]);
+        return response()->json(['success' => true, 'url' => $url]);
     }
 
     /**
@@ -494,16 +445,11 @@ class CvController extends Controller
             'avatar' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ]);
 
-        // Xóa avatar cũ nếu có (chỉ xóa file local an toàn)
-        if (
-            !empty($cv->personal_info['avatar'])
-            && is_string($cv->personal_info['avatar'])
-            && !str_starts_with($cv->personal_info['avatar'], 'http')
-            && $this->isSafeStoragePath($cv->personal_info['avatar'])
-        ) {
-            $oldAvatar = \Storage::disk('public')->path($cv->personal_info['avatar']);
+        // Xóa avatar cũ nếu có (chỉ xóa file local, không xóa URL bên ngoài như Google avatars)
+        if (!empty($cv->personal_info['avatar']) && !str_starts_with($cv->personal_info['avatar'], 'http')) {
+            $oldAvatar = public_path('storage/' . $cv->personal_info['avatar']);
             if (file_exists($oldAvatar)) {
-                @unlink($oldAvatar);
+                unlink($oldAvatar);
             }
         }
 
@@ -532,17 +478,11 @@ class CvController extends Controller
         if (!empty($cv->personal_info['avatar'])) {
             $oldAvatar = $cv->personal_info['avatar'];
 
-            // H-1: Chỉ delete khi path nằm trong storage path hợp lệ
-            // — chặn path traversal (../../config/database.php)
-            // và XSS qua URL bên ngoài.
-            if (
-                is_string($oldAvatar)
-                && !str_starts_with($oldAvatar, 'http')
-                && $this->isSafeStoragePath($oldAvatar)
-            ) {
-                $avatarPath = \Storage::disk('public')->path($oldAvatar);
+            // Only delete local files (skip external URLs like Google avatars)
+            if (!str_starts_with($oldAvatar, 'http')) {
+                $avatarPath = public_path('storage/' . $oldAvatar);
                 if (file_exists($avatarPath)) {
-                    @unlink($avatarPath);
+                    unlink($avatarPath);
                 }
             }
 
@@ -552,27 +492,6 @@ class CvController extends Controller
         }
 
         return response()->json(['success' => true]);
-    }
-
-    /**
-     * H-1: Validate avatar path nằm trong storage disk 'public'.
-     * Chặn ../, absolute path, hoặc symlink trỏ ra ngoài.
-     */
-    private function isSafeStoragePath(string $path): bool
-    {
-        if ($path === '' || str_contains($path, '..') || str_contains($path, "\0")) {
-            return false;
-        }
-
-        $disk = \Storage::disk('public');
-        $realBase = realpath($disk->path(''));
-        $realPath = realpath($disk->path($path));
-
-        if (!$realBase || !$realPath) {
-            return false;
-        }
-
-        return str_starts_with($realPath, $realBase);
     }
 
     /**
@@ -607,14 +526,11 @@ class CvController extends Controller
         $this->authorize('view', $cv);
         $cv->load(['template', 'sections.items']);
 
-        // C-3 + L5: PDF generate — chống DoS + sanitize XSS
+        // L5: Chống DoS qua HTML siêu lớn → OOM server
         set_time_limit(30);
         ini_set('memory_limit', '256M');
 
         $html = view('cv.pdf', compact('cv'))->render();
-
-        // C-3: Sanitize HTML trước khi render PDF
-        $html = CvHtmlSanitizer::purify($html);
 
         // Ensure all fonts are 'dejavusans' (lowercase, no space) for full Unicode / Vietnamese support
         // dompdf only recognizes 'dejavusans' (not 'DejaVu Sans' with space)
@@ -625,13 +541,11 @@ class CvController extends Controller
         );
         $html = preg_replace('/font-family\s*:\s*["\'][^"\']+["\']/i', "font-family: 'dejavusans'", $html);
 
-        // C-3: Chống LFI/SSRF — tắt local file access + chroot về base path
         $pdf = Pdf::loadHTML($html);
         $pdf->setPaper('A4', 'portrait');
-        $pdf->setOption('enable-local-file-access', false);
+        $pdf->setOption('enable-local-file-access', true);
         $pdf->setOption('isHtml5ParserEnabled', true);
         $pdf->setOption('isRemoteEnabled', false);
-        $pdf->setOption('chroot', realpath(base_path()));
 
         return $pdf->download(Str::slug($cv->title) . '.pdf');
     }

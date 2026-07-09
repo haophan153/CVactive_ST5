@@ -1,16 +1,16 @@
-@extends('layouts.admin')
-@section('title', 'C├ái ─æß║╖t hß╗ç thß╗æng')
-@section('page-title', 'C├ái ─æß║╖t')
+﻿@extends('layouts.admin')
+@section('title', 'Cài đặt hệ thống')
+@section('page-title', 'Cài đặt')
 
 @section('breadcrumb')
-<span class="text-slate-900 font-bold">C├ái ─æß║╖t</span>
+<span class="text-slate-900 font-bold">Cài đặt</span>
 @endsection
 
 @php
 $tabs = [
     'general'  => ['label' => 'Chung',       'icon' => 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37'],
     'email'    => ['label' => 'Email',       'icon' => 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8'],
-    'payment'  => ['label' => 'Thanh to├ín',  'icon' => 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z'],
+    'payment'  => ['label' => 'Thanh toán',  'icon' => 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z'],
 ];
 @endphp
 
@@ -38,12 +38,12 @@ $tabs = [
         @if(request('tab', 'general') === 'general')
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">T├¬n site</label>
+                    <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">Tên site</label>
                     <input type="text" name="site_name" value="{{ old('site_name', $settings['site_name'] ?? 'CVactive') }}"
                         class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white transition placeholder-slate-400">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">Email li├¬n hß╗ç</label>
+                    <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">Email liên hệ</label>
                     <input type="email" name="contact_email" value="{{ old('contact_email', $settings['contact_email'] ?? '') }}"
                         class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white transition placeholder-slate-400">
                 </div>
@@ -64,7 +64,7 @@ $tabs = [
                     class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm cursor-pointer file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100 transition">
             </div>
             <div>
-                <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">Mß║íng x├ú hß╗Öi</label>
+                <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">Mạng xã hội</label>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs text-slate-400 mb-1">Facebook URL</label>
@@ -92,7 +92,7 @@ $tabs = [
         @elseif(request('tab') === 'email')
             <div class="flex items-start gap-3 p-3.5 bg-amber-50 border border-amber-200 rounded-xl">
                 <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                <p class="text-xs text-amber-800">C├íc th├┤ng tin SMTP n├áy sß║╜ ghi ─æ├¿ cß║Ñu h├¼nh trong file <code class="font-mono bg-amber-100 px-1 rounded">.env</code>. ─Éß╗â trß╗æng password nß║┐u kh├┤ng muß╗æn thay ─æß╗òi.</p>
+                <p class="text-xs text-amber-800">Các thông tin SMTP này sẽ ghi đè cấu hình trong file <code class="font-mono bg-amber-100 px-1 rounded">.env</code>. Để trống password nếu không muốn thay đổi.</p>
             </div>
             <div class="grid grid-cols-2 gap-5">
                 <div>
@@ -114,7 +114,7 @@ $tabs = [
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">Password</label>
-                    <input type="password" name="mail_password" placeholder="ΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇó"
+                    <input type="password" name="mail_password" placeholder="••••••••"
                         class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white transition">
                 </div>
             </div>
@@ -138,7 +138,6 @@ $tabs = [
                 <input type="email" name="mail_from_address" value="{{ old('mail_from_address', $settings['mail_from_address'] ?? '') }}"
                     class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white transition">
             </div>
-
         @elseif(request('tab') === 'payment')
             <div class="border border-slate-200 rounded-2xl p-5">
                 <label class="flex items-center justify-between cursor-pointer">
@@ -158,7 +157,6 @@ $tabs = [
                         class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white transition">
                 </div>
             </div>
-
             <div class="border border-slate-200 rounded-2xl p-5">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
@@ -182,7 +180,7 @@ $tabs = [
         @endif
 
         <div class="flex justify-end pt-4 border-t border-slate-100">
-            <button class="px-5 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-md shadow-indigo-500/20">L╞░u c├ái ─æß║╖t</button>
+            <button class="px-5 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-md shadow-indigo-500/20">Lưu cài đặt</button>
         </div>
     </div>
 </form>

@@ -13,8 +13,6 @@ use App\Models\Cv;
 use App\Models\Template;
 use App\Services\PdfTextExtractor;
 use App\Policies\ApplicationPolicy;
-use App\Support\PiiLogHash;
-use Illuminate\Validation\Rule;
 
 class JobApplicationController extends Controller
 {
@@ -101,13 +99,12 @@ class JobApplicationController extends Controller
         // ============================================================
         // STEP 6: Log successful access
         // ============================================================
-        // L-6: hash email trước khi log — chống GDPR leak qua backup/log shipper
         Log::channel('cv_access')->info('CV File Downloaded Successfully', [
             'user_id' => $user->id,
             'user_role' => $user->role,
             'application_id' => $application->id,
             'candidate_name' => $application->full_name,
-            'candidate_email_hash' => PiiLogHash::email($application->email),
+            'candidate_email' => $application->email,
             'job_post_id' => $application->job_post_id,
             'job_post_title' => $application->jobPost?->title,
             'cv_path' => $application->cv_path ?? $application->cv_file,
@@ -337,7 +334,6 @@ class JobApplicationController extends Controller
 
         // Nếu có keywords → tính score & lọc
         if (!empty($keywords)) {
-            /** @var array<int, JobApplication> $scored */
             $scored = [];
 
             foreach ($applications as $app) {
@@ -559,15 +555,7 @@ class JobApplicationController extends Controller
             'full_name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
             'phone' => 'nullable|string|max:20',
-            // L-12: giới hạn cv_id về user hiện tại — nếu attacker gửi cv_id
-            // của user khác, bị reject ngay tại FormRequest.
-            'cv_id' => [
-                'nullable',
-                'integer',
-                Rule::exists('cvs', 'id')->where(function ($query) use ($request) {
-                    $query->where('user_id', $request->user()?->id);
-                }),
-            ],
+            'cv_id' => 'nullable|exists:cvs,id',
             'cv_file' => [
                 'nullable',
                 'file',
@@ -640,7 +628,7 @@ class JobApplicationController extends Controller
 
             Log::channel('cv_access')->info('CV File Uploaded', [
                 'user_id' => auth()->check() ? auth()->id() : null,
-                'application_email_hash' => PiiLogHash::email($validated['email']),
+                'application_email' => $validated['email'],
                 'job_post_id' => $jobPost->id,
                 'filename' => $filename,
                 'size' => $file->getSize(),
