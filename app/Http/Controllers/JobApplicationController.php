@@ -547,14 +547,19 @@ class JobApplicationController extends Controller
 
     /**
      * Ứng tuyển công việc - với bảo mật file upload
+     *
+     * SECURITY (fix #12 + #11):
+     *  - Per-route throttle in routes/web.php (10/min/IP)
+     *  - Strip dangerous HTML from cover_letter / full_name (XSS via stored profile)
+     *  - Normalize email / phone to canonical form
      */
     public function apply(Request $request, JobPost $jobPost)
     {
         // Validate với bảo mật
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
-            'email' => 'required|email|max:255',
-            'phone' => 'nullable|string|max:20',
+            'email' => 'required|email:rfc|max:255',
+            'phone' => ['nullable', 'string', 'max:20', 'regex:/^[0-9+\-\s()]*$/'],
             'cv_id' => 'nullable|exists:cvs,id',
             'cv_file' => [
                 'nullable',
@@ -577,6 +582,13 @@ class JobApplicationController extends Controller
             ],
             'cover_letter' => 'nullable|string|max:2000',
         ]);
+
+        // XSS sanitization for free-text fields (fix #12)
+        $validated['full_name']   = strip_tags(trim($validated['full_name']));
+        $validated['cover_letter'] = isset($validated['cover_letter'])
+            ? strip_tags($validated['cover_letter'], '<br><b><strong><i><em><u>')
+            : null;
+        $validated['email'] = strtolower(trim($validated['email']));
 
         // Check if job post is still accepting applications
         if ($jobPost->status !== 'published') {

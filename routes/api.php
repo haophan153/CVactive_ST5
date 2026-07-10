@@ -25,11 +25,15 @@ Route::get('/jobs/{jobPost}', [JobController::class, 'show']);
 
 // ================================================================
 // AUTH ROUTES (no auth required, but sanctum for user association)
+// SECURITY (fix #11): Per-route throttle for register/login — 5 attempts per
+// minute per IP. Prevents brute force + mass account creation.
 // ================================================================
 
 Route::prefix('auth')->group(function () {
-    Route::post('/register', [AuthController::class, 'register']);
-    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/register', [AuthController::class, 'register'])
+        ->middleware('throttle:5,1');
+    Route::post('/login', [AuthController::class, 'login'])
+        ->middleware('throttle:5,1');
 });
 
 // ================================================================

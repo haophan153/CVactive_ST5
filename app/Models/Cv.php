@@ -61,6 +61,34 @@ class Cv extends Model
     }
 
     /**
+     * SECURITY (fix #12): Read accessor that returns personal_info as plaintext-only
+     * (no HTML tags). Blade views should always render via {{ $cv->safe_personal_info['full_name'] }}
+     * to guarantee escaping. Direct `$cv->personal_info` should be treated as untrusted
+     * and rendered with {{ ... }}.
+     */
+    public function getSafePersonalInfoAttribute(): array
+    {
+        $info = $this->personal_info ?? [];
+        $clean = [];
+        foreach ($info as $k => $v) {
+            if (is_string($v)) {
+                $clean[$k] = strip_tags(trim($v));
+            } else {
+                $clean[$k] = $v;
+            }
+        }
+        return $clean;
+    }
+
+    /**
+     * SECURITY (fix #12): Read accessor for objective.
+     */
+    public function getSafeObjectiveAttribute(): string
+    {
+        return is_string($this->objective) ? strip_tags(trim($this->objective)) : '';
+    }
+
+    /**
      * Get the shares for the CV.
      */
     public function shares()

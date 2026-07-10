@@ -176,7 +176,7 @@
             <div class="space-y-3">
                 @foreach($faqs as $faq)
                 <div id="faq-{{ $faq->id }}"
-                    x-show="search === '' || '{{ strtolower(addslashes($faq->question . ' ' . strip_tags($faq->answer))) }}'.includes(search.toLowerCase())"
+                    x-show="search === '' || @js(strtolower($faq->question . ' ' . strip_tags($faq->answer))).includes(search.toLowerCase())"
                     x-data="{ open: false }"
                     class="bg-white rounded-xl border border-slate-200 hover:border-indigo-200 transition overflow-hidden">
 

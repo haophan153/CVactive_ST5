@@ -121,7 +121,7 @@ Route::post('/payment/momo/ipn', [\App\Http\Controllers\PaymentController::class
 Route::get('/payment/fail', fn() => view('payment.fail'))->name('payment.fail');
 
 // ── Admin routes ───────────────────────────────────────────────────────────
-Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'admin', 'throttle:120,1'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
 
     // Global search — throttle 60 req/min chống DoS DB
@@ -180,7 +180,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 });
 
 // ── HR routes ──────────────────────────────────────────────────────────────
-Route::middleware(['auth', 'hr'])->prefix('hr')->name('hr.')->group(function () {
+Route::middleware(['auth', 'hr', 'throttle:180,1'])->prefix('hr')->name('hr.')->group(function () {
     Route::get('/job-posts', [JobPostController::class, 'index'])->name('job-posts.index');
     Route::get('/job-posts/heartbeat', [JobPostController::class, 'heartbeat'])->name('job-posts.heartbeat');
     Route::get('/job-posts/create', [JobPostController::class, 'create'])->name('job-posts.create');
