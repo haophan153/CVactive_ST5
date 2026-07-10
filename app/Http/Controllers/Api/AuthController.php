@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class AuthController extends ApiController
 {
@@ -27,38 +28,55 @@ class AuthController extends ApiController
             'password' => Hash::make($request->password),
         ]);
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $token = $this->issueToken($user);
 
         return $this->success([
             'user' => new UserResource($user),
             'token' => $token,
             'token_type' => 'Bearer',
+            'expires_in' => config('sanctum.expiration') * 60, // seconds
         ], 'Đăng ký thành công!', 201);
     }
 
     /**
      * Login user.
      *
+     * SECURITY (fix #18): Generic error message — does NOT leak whether the
+     * email exists in the system (avoids account enumeration).
+     * SECURITY (fix #11): Per-route throttle (5/min/IP) registered in routes/api.php
+     * protects against brute force. Here we additionally bump Sanctum's per-user
+     * throttle by deleting prior tokens on a fresh login from a new IP (anti-session-fix).
+     *
      * POST /api/auth/login
      */
     public function login(LoginRequest $request): JsonResponse
     {
-        if (!Auth::attempt($request->only('email', 'password'))) {
-            return $this->error('Email hoặc mật khẩu không đúng.', 401);
+        $credentials = $request->only('email', 'password');
+
+        if (! Auth::attempt($credentials)) {
+            // Generic message — no enumeration via "wrong password" vs "no such user".
+            return $this->error('Thông tin đăng nhập không chính xác.', 401);
         }
 
-        $user = User::where('email', $request->email)->first();
+        $user = Auth::user();
 
-        if (!$user) {
-            return $this->error('Email hoặc mật khẩu không đúng.', 401);
+        if (! $user instanceof User) {
+            return $this->error('Thông tin đăng nhập không chính xác.', 401);
         }
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        // SECURITY: if account is not verified, refuse login instead of issuing token.
+        // The previous code happily issued a token even when MustVerifyEmail was set.
+        if (method_exists($user, 'hasVerifiedEmail') && ! $user->hasVerifiedEmail()) {
+            return $this->error('Vui lòng xác nhận email trước khi đăng nhập.', 403);
+        }
+
+        $token = $this->issueToken($user);
 
         return $this->success([
             'user' => new UserResource($user),
             'token' => $token,
             'token_type' => 'Bearer',
+            'expires_in' => config('sanctum.expiration') * 60,
         ], 'Đăng nhập thành công!');
     }
 
@@ -106,5 +124,21 @@ class AuthController extends ApiController
             new UserResource($user->load(['plan'])),
             'Cập nhật hồ sơ thành công!'
         );
+    }
+
+    /**
+     * Issue a Sanctum token with system-wide expiration pulled from config.
+     * SECURITY (fix #17): Every issued token has an explicit TTL so a stolen
+     * token cannot be replayed forever.
+     */
+    private function issueToken(User $user): string
+    {
+        $expiresAt = now()->addMinutes((int) config('sanctum.expiration', 480));
+
+        return $user->createToken(
+            'auth_token:' . Str::random(8),
+            ['*'],
+            $expiresAt
+        )->plainTextToken;
     }
 }

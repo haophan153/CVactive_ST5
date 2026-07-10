@@ -45,9 +45,11 @@
                         {{ $item['value'] }}
                     </p>
                     @if(in_array($item['label'], ['Số tài khoản','Nội dung CK']))
-                    <button onclick="navigator.clipboard.writeText('{{ $item['value'] }}'); this.textContent='✓ Đã copy'"
+                    <button x-data="{ copied: false }"
+                        @click="navigator.clipboard.writeText(@js($item['value'])); copied = true; setTimeout(() => copied = false, 2000);"
                         class="mt-2 text-xs text-indigo-500 hover:text-indigo-700 transition">
-                        Copy
+                        <span x-show="!copied">Copy</span>
+                        <span x-show="copied" x-cloak>✓ Đã copy</span>
                     </button>
                     @endif
                 </div>

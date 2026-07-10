@@ -7,8 +7,13 @@ use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
+/**
+ * SECURITY (fix #9 + #18 + #19): Throttled login with a generic error message and
+ * session-regenerate-on-login to prevent session fixation.
+ */
 class AuthenticatedSessionController extends Controller
 {
     /**
@@ -39,7 +44,6 @@ class AuthenticatedSessionController extends Controller
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
-
         $request->session()->regenerateToken();
 
         return redirect('/');

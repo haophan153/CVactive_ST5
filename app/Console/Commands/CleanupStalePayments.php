@@ -43,8 +43,20 @@ class CleanupStalePayments extends Command
             return self::SUCCESS;
         }
 
-        $deletedPending = (clone $stalePending)->delete();
-        $deletedFailed  = (clone $oldFailed)->delete();
+        // SECURITY (defense in depth): Hard cap mỗi lần xóa để chống
+        // runaway script. Tổng số vẫn đúng nhờ loop đến khi hết.
+        $batchSize = 1000;
+        $deletedPending = 0;
+        do {
+            $deleted = (clone $stalePending)->limit($batchSize)->delete();
+            $deletedPending += $deleted;
+        } while ($deleted > 0);
+
+        $deletedFailed = 0;
+        do {
+            $deleted = (clone $oldFailed)->limit($batchSize)->delete();
+            $deletedFailed += $deleted;
+        } while ($deleted > 0);
 
         $this->info("Đã xóa {$deletedPending} pending, {$deletedFailed} failed.");
         return self::SUCCESS;

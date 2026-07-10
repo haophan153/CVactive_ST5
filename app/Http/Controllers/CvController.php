@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Cv;
@@ -37,6 +38,16 @@ class CvController extends Controller
 
     /**
      * Tạo CV mới từ template đã chọn
+     *
+     * SECURITY (fix #7): TOCTOU race condition fix.
+     * The previous implementation did:
+     *   1. count() current CVs
+     *   2. compare with $plan->cv_limit
+     *   3. insert
+     * An attacker with multiple concurrent requests (or just 2 tabs) could
+     * slip through the check. We now use a DB transaction with row-level lock
+     * on the user record — the second concurrent request blocks until the first
+     * commits, then sees the updated count and is rejected.
      */
     public function store(Request $request)
     {
@@ -44,66 +55,95 @@ class CvController extends Controller
             'template_id' => 'required|exists:templates,id',
         ]);
 
-        $user     = auth()->user();
-        $plan     = $user->plan;
-        $cvLimit  = $plan ? $plan->cv_limit : 2;
-        $cvCount  = $user->cvs()->count();
+        $user = auth()->user();
 
-        if ($cvCount >= $cvLimit) {
-            return back()->with('error', "Bạn đã đạt giới hạn {$cvLimit} CV của gói hiện tại. Vui lòng nâng cấp để tạo thêm.");
-        }
+        try {
+            $cv = DB::transaction(function () use ($request, $user) {
+                // SELECT ... FOR UPDATE: blocks concurrent store() from same user
+                // until this transaction commits. SQLite supports it via BEGIN IMMEDIATE
+                // since Laravel 10 when using a serializable transaction.
+                $lockedUser = DB::table('users')
+                    ->where('id', $user->id)
+                    ->lockForUpdate()
+                    ->first();
 
-        $template = Template::findOrFail($request->template_id);
+                if (! $lockedUser) {
+                    abort(401);
+                }
 
-        // H2: Free user không được chọn template Premium
-        if ($template->is_premium && !$user->hasProAccess()) {
-            return back()->with('error', "Template '{$template->name}' chỉ dành cho gói Pro. Vui lòng nâng cấp để sử dụng.");
-        }
+                $plan     = $user->plan;
+                $cvLimit  = $plan ? $plan->cv_limit : 2;
+                $cvCount  = $user->cvs()->count();
 
-        // Tăng usage count
-        $template->increment('usage_count');
+                if ($cvCount >= $cvLimit) {
+                    abort(403, "Bạn đã đạt giới hạn {$cvLimit} CV của gói hiện tại. Vui lòng nâng cấp để tạo thêm.");
+                }
 
-        $cv = Cv::create([
-            'user_id'     => $user->id,
-            'template_id' => $template->id,
-            'title'       => 'CV của ' . $user->name,
-            'slug'        => Str::slug($user->name) . '-' . Str::random(6),
-            'personal_info' => [
-                'full_name'  => $user->name,
-                'email'      => $user->email,
-                'phone'      => '',
-                'address'    => '',
-                'website'    => '',
-                'linkedin'   => '',
-                'github'     => '',
-                'avatar'     => $user->avatar ?? '',
-            ],
-            'objective'   => '',
-            'theme_color' => $template->theme_color ?? '#4F46E5',
-            'font_family' => $template->font_family ?? 'Inter',
-            'visibility'  => 'private',
-            'is_draft'    => true,
-        ]);
+                $template = Template::findOrFail($request->template_id);
 
-        // Tạo các section mặc định
-        $defaultSections = [
-            ['type' => 'personal',       'title' => 'Thông tin cá nhân',      'sort_order' => 0],
-            ['type' => 'objective',      'title' => 'Mục tiêu nghề nghiệp',   'sort_order' => 1],
-            ['type' => 'experience',     'title' => 'Kinh nghiệm làm việc',   'sort_order' => 2],
-            ['type' => 'education',      'title' => 'Học vấn',                'sort_order' => 3],
-            ['type' => 'skills',         'title' => 'Kỹ năng',                'sort_order' => 4],
-            ['type' => 'certifications', 'title' => 'Chứng chỉ',             'sort_order' => 5],
-            ['type' => 'projects',       'title' => 'Dự án',                  'sort_order' => 6],
-            ['type' => 'activities',     'title' => 'Hoạt động',              'sort_order' => 7],
-            ['type' => 'references',     'title' => 'Người tham chiếu',       'sort_order' => 8],
-        ];
+                // H2: Free user không được chọn template Premium
+                if ($template->is_premium && !$user->hasProAccess()) {
+                    abort(403, "Template '{$template->name}' chỉ dành cho gói Pro. Vui lòng nâng cấp để sử dụng.");
+                }
 
-        foreach ($defaultSections as $section) {
-            CvSection::create(array_merge($section, [
-                'cv_id'      => $cv->id,
-                'is_visible' => true,
-                'is_custom'  => false,
-            ]));
+                // Tăng usage count
+                $template->increment('usage_count');
+
+                $cv = Cv::create([
+                    'user_id'     => $user->id,
+                    'template_id' => $template->id,
+                    'title'       => 'CV của ' . $user->name,
+                    'slug'        => Str::slug($user->name) . '-' . Str::random(6),
+                    'personal_info' => [
+                        'full_name'  => $user->name,
+                        'email'      => $user->email,
+                        'phone'      => '',
+                        'address'    => '',
+                        'website'    => '',
+                        'linkedin'   => '',
+                        'github'     => '',
+                        'avatar'     => $user->avatar ?? '',
+                    ],
+                    'objective'   => '',
+                    'theme_color' => $template->theme_color ?? '#4F46E5',
+                    'font_family' => $template->font_family ?? 'Inter',
+                    'visibility'  => 'private',
+                    'is_draft'    => true,
+                ]);
+
+                // Tạo các section mặc định
+                $defaultSections = [
+                    ['type' => 'personal',       'title' => 'Thông tin cá nhân',      'sort_order' => 0],
+                    ['type' => 'objective',      'title' => 'Mục tiêu nghề nghiệp',   'sort_order' => 1],
+                    ['type' => 'experience',     'title' => 'Kinh nghiệm làm việc',   'sort_order' => 2],
+                    ['type' => 'education',      'title' => 'Học vấn',                'sort_order' => 3],
+                    ['type' => 'skills',         'title' => 'Kỹ năng',                'sort_order' => 4],
+                    ['type' => 'certifications', 'title' => 'Chứng chỉ',             'sort_order' => 5],
+                    ['type' => 'projects',       'title' => 'Dự án',                  'sort_order' => 6],
+                    ['type' => 'activities',     'title' => 'Hoạt động',              'sort_order' => 7],
+                    ['type' => 'references',     'title' => 'Người tham chiếu',       'sort_order' => 8],
+                ];
+
+                foreach ($defaultSections as $section) {
+                    CvSection::create(array_merge($section, [
+                        'cv_id'      => $cv->id,
+                        'is_visible' => true,
+                        'is_custom'  => false,
+                    ]));
+                }
+
+                return $cv;
+            });
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            // Surface the user-friendly limit message back to the form.
+            $message = $e->getMessage() ?: 'Không thể tạo CV. Vui lòng thử lại.';
+            return back()->with('error', $message)->withInput();
+        } catch (\Throwable $e) {
+            Log::error('CV store failed', [
+                'user_id' => $user->id,
+                'error'   => $e->getMessage(),
+            ]);
+            return back()->with('error', 'Có lỗi xảy ra, vui lòng thử lại sau.');
         }
 
         return redirect()->route('cv.edit', $cv)->with('success', 'CV đã được tạo! Hãy bắt đầu chỉnh sửa.');
@@ -310,11 +350,11 @@ class CvController extends Controller
      */
     public function share(string $token)
     {
-        $share = \App\Models\CvShare::where('share_token', $token)
-            ->where(function ($q) {
-                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
-            })
-            ->firstOrFail();
+        $share = \App\Models\CvShare::where('share_token', $token)->firstOrFail();
+
+        if (! $share->isUsable()) {
+            abort(410, 'Liên kết chia sẻ đã hết hạn hoặc bị thu hồi.');
+        }
 
         // M2: Atomic increment + dùng DB::raw cho view_count để tránh race
         // concurrent request cùng truy cập share token
@@ -333,11 +373,11 @@ class CvController extends Controller
      */
     public function exportPdfByShareToken(string $token)
     {
-        $share = \App\Models\CvShare::where('share_token', $token)
-            ->where(function ($q) {
-                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
-            })
-            ->firstOrFail();
+        $share = \App\Models\CvShare::where('share_token', $token)->firstOrFail();
+
+        if (! $share->isUsable()) {
+            abort(410, 'Liên kết chia sẻ đã hết hạn hoặc bị thu hồi.');
+        }
 
         $cv = $share->cv->load(['template', 'sections.items']);
 
@@ -370,11 +410,11 @@ class CvController extends Controller
      */
     public function exportPngByShareToken(string $token)
     {
-        $share = \App\Models\CvShare::where('share_token', $token)
-            ->where(function ($q) {
-                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
-            })
-            ->firstOrFail();
+        $share = \App\Models\CvShare::where('share_token', $token)->firstOrFail();
+
+        if (! $share->isUsable()) {
+            abort(410, 'Liên kết chia sẻ đã hết hạn hoặc bị thu hồi.');
+        }
 
         $cv = $share->cv->load(['template', 'sections.items']);
 
@@ -383,23 +423,35 @@ class CvController extends Controller
 
     /**
      * Tạo / lấy share link
+     *
+     * SECURITY (fix #13): Every new share now gets a default 7-day expiration
+     * (clamped to MAX_LIFETIME_DAYS=30). If the user wants a shorter window
+     * they can pass ?expires_in_days=N, but never more than the cap.
      */
-    public function getShareLink(Cv $cv)
+    public function getShareLink(Request $request, Cv $cv)
     {
         $this->authorize('update', $cv);
 
         $share = $cv->shares()->first();
 
         if (!$share) {
+            $days = (int) $request->input('expires_in_days', 7);
+            $days = max(1, min(\App\Models\CvShare::MAX_LIFETIME_DAYS, $days));
+
             $share = \App\Models\CvShare::create([
-                'cv_id'       => $cv->id,
-                'share_token' => Str::random(32),
+                'cv_id'        => $cv->id,
+                'share_token'  => Str::random(32),
+                'expires_at'   => now()->addDays($days),
             ]);
         }
 
         $url = route('cv.public', $share->share_token);
 
-        return response()->json(['success' => true, 'url' => $url]);
+        return response()->json([
+            'success'   => true,
+            'url'       => $url,
+            'expires_at'=> $share->expires_at?->toIso8601String(),
+        ]);
     }
 
     /**

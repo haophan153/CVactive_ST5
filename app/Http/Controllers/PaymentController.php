@@ -62,6 +62,7 @@ class PaymentController extends Controller
         $pendingToken = 'pay_' . Str::uuid()->toString();
 
         // Đẩy thông tin giao dịch vào session để callback đọc lại khi user quay về.
+        // SECURITY: gắn TTL 30 phút — nếu user bỏ qua quá lâu, token tự hết hạn.
         session([
             'pending_payment' => [
                 'token'    => $pendingToken,
@@ -73,6 +74,7 @@ class PaymentController extends Controller
                 'user_name'=> $user->name,
                 'user_email'=> $user->email,
                 'created_at'=> now()->toIso8601String(),
+                'expires_at'=> now()->addMinutes(30)->toIso8601String(),
             ],
         ]);
 
@@ -288,6 +290,12 @@ class PaymentController extends Controller
 
         // Bảo mật: phải khớp token được gửi từ cổng thanh toán
         if (! hash_equals((string) $pending['token'], $token)) {
+            return null;
+        }
+
+        // SECURITY: bỏ qua token đã quá hạn TTL (30 phút) — chống replay
+        if (! empty($pending['expires_at']) && \Carbon\Carbon::parse($pending['expires_at'])->isPast()) {
+            session()->forget('pending_payment');
             return null;
         }
 
