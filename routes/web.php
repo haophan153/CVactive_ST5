@@ -50,6 +50,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/heartbeat', [\App\Http\Controllers\DashboardController::class, 'heartbeat'])->name('dashboard.heartbeat');
 
+    // Smart Job Matcher
+    Route::get('/dashboard/job-alerts', [App\Http\Controllers\JobAlertController::class, 'index'])->name('dashboard.job-alerts');
+    Route::post('/dashboard/job-alerts', [App\Http\Controllers\JobAlertController::class, 'store'])->name('dashboard.job-alerts.store');
+    Route::delete('/dashboard/job-alerts', [App\Http\Controllers\JobAlertController::class, 'destroy'])->name('dashboard.job-alerts.destroy');
+    Route::post('/dashboard/job-alerts/toggle', [App\Http\Controllers\JobAlertController::class, 'toggle'])->name('dashboard.job-alerts.toggle');
+    Route::post('/dashboard/job-alerts/upload-cv', [App\Http\Controllers\JobAlertController::class, 'uploadCv'])
+        ->middleware('throttle:10,1')
+        ->name('dashboard.job-alerts.upload-cv');
+    Route::delete('/dashboard/job-alerts/uploaded-cv/{id}', [App\Http\Controllers\JobAlertController::class, 'deleteUploadedCv'])
+        ->middleware('throttle:10,1')
+        ->name('dashboard.job-alerts.delete-uploaded-cv');
+    Route::post('/dashboard/job-alerts/extract-skills', [App\Http\Controllers\JobAlertController::class, 'extractSkills'])->name('dashboard.job-alerts.extract-skills');
+
+    // API: job matches widget
+    Route::get('/api/job-matches', [App\Http\Controllers\JobAlertController::class, 'apiMatches'])->name('api.job-matches');
+    Route::post('/api/job-matches/{jobId}/viewed', [App\Http\Controllers\JobAlertController::class, 'markViewed'])->name('api.job-matches.viewed');
+
     // CV Management
     Route::get('/cv/create', [CvController::class, 'create'])->name('cv.create');
     Route::post('/cv', [CvController::class, 'store'])->name('cv.store');

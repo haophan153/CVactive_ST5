@@ -97,9 +97,23 @@
                             'bar'   => 'bg-purple-500',
                             'trend' => null,
                         ],
+                        [
+                            'key'   => 'job-matcher',
+                            'label' => 'Việc cho bạn',
+                            'value' => '⚡',
+                            'sub'   => 'Smart Matcher',
+                            'icon'  => 'zap',
+                            'bg'    => 'bg-indigo-500/10',
+                            'icon_bg' => 'bg-indigo-500',
+                            'bar'   => 'bg-indigo-500',
+                            'trend' => null,
+                            'url'   => route('dashboard.job-alerts'),
+                        ],
                     ];
                 @endphp
                 @foreach($cards as $card)
+                @php $cardUrl = $card['url'] ?? null; @endphp
+                @if($cardUrl)<a href="{{ $cardUrl }}" class="block">@endif
                 <div class="group relative bg-white rounded-2xl border border-slate-100 p-5 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden">
                     {{-- Decorative top stripe --}}
                     <div class="absolute top-0 left-0 right-0 h-0.5 {{ $card['bar'] }} opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -108,7 +122,7 @@
                         <div>
                             <p class="text-[11px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">{{ $card['label'] }}</p>
                             <div class="flex items-end gap-1.5">
-                                <span class="text-3xl font-black text-slate-900 tabular-nums">{{ number_format($card['value']) }}</span>
+                                <span class="text-3xl font-black text-slate-900 tabular-nums">{{ is_numeric($card['value']) ? number_format((float) $card['value']) : $card['value'] }}</span>
                             </div>
                         </div>
                         <div class="{{ $card['bg'] }} rounded-xl p-2.5 group-hover:scale-110 transition-transform duration-200">
@@ -119,6 +133,8 @@
                                     <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                                 @elseif($card['icon'] === 'clock')
                                     <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                @elseif($card['icon'] === 'zap')
+                                    <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                                 @else
                                     <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2zM8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
                                 @endif
@@ -131,13 +147,14 @@
                     {{-- Mini progress bar --}}
                     <div class="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
                         <div class="h-full {{ $card['bar'] }} rounded-full transition-all duration-700"
-                             style="width: {{ $stats['total'] > 0 ? min(100, $card['value'] * 100 / max(1, $stats['total'])) : 0 }}%"></div>
+                             style="width: {{ is_numeric($card['value']) ? min(100, $card['value'] * 100 / max(1, $stats['total'])) : 0 }}%"></div>
                     </div>
 
                     @if($card['trend'])
                         <p class="mt-2 text-[10px] font-semibold text-slate-500">{{ $card['trend'] }}</p>
                     @endif
                 </div>
+                @if($cardUrl)</a>@endif
                 @endforeach
             </div>
         </section>

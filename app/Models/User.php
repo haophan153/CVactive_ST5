@@ -110,7 +110,9 @@ class User extends Authenticatable
     {
         $today = now()->toDateString();
 
-        if ($this->ai_score_reset_at?->toDateString() !== $today) {
+        $resetAt = $this->ai_score_reset_at;
+        $resetAtString = $resetAt instanceof \DateTimeInterface ? $resetAt->format('Y-m-d') : (string) $resetAt;
+        if ($resetAtString !== $today) {
             // Update atomic chỉ khi ngày thực sự khác → tránh race
             \DB::table('users')
                 ->where('id', $this->id)
@@ -175,6 +177,14 @@ class User extends Authenticatable
     public function jobPosts()
     {
         return $this->hasMany(JobPost::class);
+    }
+
+    /**
+     * Get job match logs.
+     */
+    public function jobMatchLogs()
+    {
+        return $this->hasMany(JobMatchLog::class);
     }
 
     /**

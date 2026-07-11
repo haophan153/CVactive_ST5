@@ -237,6 +237,11 @@ class JobPost extends Model
         return $this->hasMany(JobApplication::class);
     }
 
+    public function matchLogs()
+    {
+        return $this->hasMany(JobMatchLog::class);
+    }
+
     // ─── Status helpers ─────────────────────────────────────────────────────
 
     public function isPublished(): bool
