@@ -100,12 +100,24 @@ class JobMatcherService
     /**
      * Get matching jobs for API widget (fast, rule-based only, no AI).
      *
+     * Contract:
+     *  - Returns Collection<JobMatchLog> (kept stable for controller payload)
+     *  - Returns empty if user has no profile OR no active JobAlert
+     *  - When alert is inactive, returns empty (matches "toggled off" expectation)
+     *  - When matches exist, includes them even if below threshold (UI will render
+     *    score badges; we only require score > 0 so we don't surface nonsense jobs)
+     *
      * @return Collection<JobMatchLog>
      */
     public function matchForWidget(User $user, int $limit = 5): Collection
     {
         $profile = UserSkillProfile::where('user_id', $user->id)->first();
         if (!$profile) {
+            return collect();
+        }
+
+        $alert = JobAlert::where('user_id', $user->id)->first();
+        if (!$alert || !$alert->is_active) {
             return collect();
         }
 
@@ -132,10 +144,47 @@ class JobMatcherService
             );
 
             return $log;
-        })->filter(fn($log) => $log->rule_score >= self::RULE_THRESHOLD_DEFAULT)
+        })->filter(fn($log) => $log->rule_score > 0)
           ->sortByDesc('rule_score')
           ->take($limit)
           ->values();
+    }
+
+    /**
+     * Diagnostic state for the dashboard widget — lets the UI render the
+     * correct empty-state copy ("chưa bật", "chưa có CV", "chưa có match phù hợp").
+     *
+     * One of:
+     *   - "no_profile"   : user has no UserSkillProfile (need to upload CV first)
+     *   - "no_alert"     : user has never opened settings page (no JobAlert row)
+     *   - "inactive"     : user toggled Smart Matcher OFF
+     *   - "no_matches"   : alert is on, but no published job scored > 0
+     *   - "ok"           : matches available (caller will render the list)
+     */
+    public function widgetState(User $user): string
+    {
+        if (!UserSkillProfile::where('user_id', $user->id)->exists()) {
+            return 'no_profile';
+        }
+
+        $alert = JobAlert::where('user_id', $user->id)->first();
+        if (!$alert) {
+            return 'no_alert';
+        }
+        if (!$alert->is_active) {
+            return 'inactive';
+        }
+
+        // Probe whether any published job would score > 0 for this profile
+        $profile = UserSkillProfile::where('user_id', $user->id)->first();
+        $hasMatch = JobPost::published()
+            ->limit(20)
+            ->get()
+            ->contains(function (JobPost $job) use ($profile) {
+                return $this->ruleBasedMatcher->match($profile, $job)['score'] > 0;
+            });
+
+        return $hasMatch ? 'ok' : 'no_matches';
     }
 
     /**
@@ -143,12 +192,11 @@ class JobMatcherService
      */
     private function getCandidateJobs(JobAlert $alert, UserSkillProfile $profile): Collection
     {
-        $query = JobPost::published()
-            ->whereDoesntHave('matchLogs', function ($q) {
-                // Exclude jobs already sent within last 7 days
-                $q->whereNotNull('sent_at')
-                  ->where('sent_at', '>=', now()->subDays(7));
-            });
+        // Lấy tất cả job published. Không loại trừ job đã sent gần đây vì
+        // một job có thể vẫn phù hợp trong các ngày tiếp theo — việc "gửi
+        // lại" là hợp lý khi vẫn nằm trong top matches. Match mới sẽ
+        // ghi đè JobMatchLog cũ qua updateOrCreate.
+        $query = JobPost::published();
 
         // Category filter
         $cats = $alert->preferred_categories ?? $profile->preferred_categories ?? [];

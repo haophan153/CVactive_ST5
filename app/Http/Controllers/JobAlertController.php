@@ -317,6 +317,7 @@ class JobAlertController extends Controller
         $limit = min((int) $request->input('limit', 5), 10);
 
         $matches = $this->matcher->matchForWidget($user, $limit);
+        $state = $this->matcher->widgetState($user);
 
         $data = $matches->map(fn(JobMatchLog $log) => [
             'id'       => $log->job_post_id,
@@ -330,7 +331,10 @@ class JobAlertController extends Controller
             'is_new'   => $log->jobPost->is_new,
         ]);
 
-        return response()->json(['matches' => $data]);
+        return response()->json([
+            'matches' => $data,
+            'state'   => $state,
+        ]);
     }
 
     /**
