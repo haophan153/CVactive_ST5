@@ -36,8 +36,10 @@ class SendDailyJobAlerts implements ShouldQueue
     {
         Log::info('SendDailyJobAlerts: starting');
 
+        // Lấy user có alert active; gồm cả frequency 'daily' (gửi job hàng ngày
+        // theo lịch 8h) và 'instant' (vẫn thử gửi tổng hợp job mới khi chạy).
         $alerts = JobAlert::where('is_active', true)
-            ->where('notification_frequency', 'daily')
+            ->whereIn('notification_frequency', ['daily', 'instant'])
             ->where(function ($q) {
                 $q->whereNull('last_sent_at')
                   ->orWhereDate('last_sent_at', '<', now()->toDateString());
@@ -51,14 +53,18 @@ class SendDailyJobAlerts implements ShouldQueue
         foreach ($alerts as $alert) {
             $user = $alert->user;
 
-            // Skip if user has no CV
-            if ($user->cvs()->count() === 0) {
+            // Skip nếu user không có email hợp lệ / chưa verify
+            if (!$user->email || !$user->hasVerifiedEmail()) {
                 $skipped++;
                 continue;
             }
 
-            // Skip if user has no email
-            if (!$user->email || !$user->hasVerifiedEmail()) {
+            // Skip nếu user không có CV (cvs table) VÀ cũng không có skill
+            // profile (tức là user này chưa từng upload / tạo CV nào).
+            // User chỉ có UserSkillProfile (qua UploadedCv) vẫn được gửi.
+            $hasCv      = $user->cvs()->count() > 0;
+            $hasProfile = \App\Models\UserSkillProfile::where('user_id', $user->id)->exists();
+            if (!$hasCv && !$hasProfile) {
                 $skipped++;
                 continue;
             }
@@ -73,6 +79,9 @@ class SendDailyJobAlerts implements ShouldQueue
                 $skipped++;
                 continue;
             }
+
+            // Cap matches để email không quá dài
+            $matches = $matches->take(5);
 
             // Mark matches as sent
             foreach ($matches as $match) {

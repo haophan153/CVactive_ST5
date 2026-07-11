@@ -159,6 +159,134 @@
             </div>
         </section>
 
+        {{-- ══ Smart Job Matcher Widget ═══════════════════════════════════ --}}
+        <section id="jobMatcherWidget" aria-label="Việc làm phù hợp với bạn"
+            class="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="font-bold text-slate-900 text-base">Việc làm phù hợp với bạn</h3>
+                            <span class="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                                AI
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-0.5">Dựa trên kỹ năng trong CV — cập nhật mỗi ngày</p>
+                    </div>
+                </div>
+                <a href="{{ route('dashboard.job-alerts') }}"
+                    class="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition">
+                    Quản lý & cài đặt
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </a>
+            </div>
+
+            <div id="jobMatchesList" class="space-y-2">
+                {{-- Loading skeleton (3 dòng) --}}
+                <div class="job-match-skeleton animate-pulse flex items-center gap-3 p-3 rounded-xl bg-slate-50">
+                    <div class="w-12 h-12 rounded-lg bg-slate-200 shrink-0"></div>
+                    <div class="flex-1 space-y-2">
+                        <div class="h-3 w-3/4 bg-slate-200 rounded"></div>
+                        <div class="h-2 w-1/2 bg-slate-200 rounded"></div>
+                    </div>
+                    <div class="w-16 h-6 bg-slate-200 rounded-full"></div>
+                </div>
+                <div class="job-match-skeleton animate-pulse flex items-center gap-3 p-3 rounded-xl bg-slate-50">
+                    <div class="w-12 h-12 rounded-lg bg-slate-200 shrink-0"></div>
+                    <div class="flex-1 space-y-2">
+                        <div class="h-3 w-2/3 bg-slate-200 rounded"></div>
+                        <div class="h-2 w-1/3 bg-slate-200 rounded"></div>
+                    </div>
+                    <div class="w-16 h-6 bg-slate-200 rounded-full"></div>
+                </div>
+                <div class="job-match-skeleton animate-pulse flex items-center gap-3 p-3 rounded-xl bg-slate-50">
+                    <div class="w-12 h-12 rounded-lg bg-slate-200 shrink-0"></div>
+                    <div class="flex-1 space-y-2">
+                        <div class="h-3 w-1/2 bg-slate-200 rounded"></div>
+                        <div class="h-2 w-1/4 bg-slate-200 rounded"></div>
+                    </div>
+                    <div class="w-16 h-6 bg-slate-200 rounded-full"></div>
+                </div>
+            </div>
+
+            {{-- Empty: never uploaded CV / no skill profile --}}
+            <div id="jobMatchesNoProfile" class="hidden text-center py-8">
+                <div class="w-14 h-14 rounded-2xl bg-violet-50 border-2 border-dashed border-violet-200 flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-7 h-7 text-violet-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                </div>
+                <h4 class="text-sm font-bold text-slate-900 mb-1">Chưa có CV để phân tích</h4>
+                <p class="text-xs text-slate-500 max-w-xs mx-auto mb-4">Upload CV để AI trích xuất kỹ năng, sau đó bật Smart Job Matcher.</p>
+                <a href="{{ route('dashboard.job-alerts') }}"
+                    class="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-lg shadow-violet-900/20 transition-all active:scale-[0.98]">
+                    Upload CV ngay
+                </a>
+            </div>
+
+            {{-- Empty: Smart Matcher is toggled OFF --}}
+            <div id="jobMatchesInactive" class="hidden text-center py-8">
+                <div class="w-14 h-14 rounded-2xl bg-slate-100 border-2 border-dashed border-slate-200 flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-7 h-7 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                </div>
+                <h4 class="text-sm font-bold text-slate-900 mb-1">Smart Matcher đang tắt</h4>
+                <p class="text-xs text-slate-500 max-w-xs mx-auto mb-4">Bật Smart Job Matcher để nhận gợi ý việc làm phù hợp mỗi ngày qua email.</p>
+                <a href="{{ route('dashboard.job-alerts') }}"
+                    class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-lg shadow-indigo-900/20 transition-all active:scale-[0.98]">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    Bật Smart Matcher
+                </a>
+            </div>
+
+            {{-- Empty: alert ON, profile exists, but no jobs scored > 0 --}}
+            <div id="jobMatchesNoMatch" class="hidden text-center py-8">
+                <div class="w-14 h-14 rounded-2xl bg-amber-50 border-2 border-dashed border-amber-200 flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-7 h-7 text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                </div>
+                <h4 class="text-sm font-bold text-slate-900 mb-1">Chưa tìm thấy việc phù hợp</h4>
+                <p class="text-xs text-slate-500 max-w-xs mx-auto mb-4">CV của bạn đã được phân tích. Hãy thử mở rộng danh mục / địa điểm / loại hình mong muốn.</p>
+                <a href="{{ route('dashboard.job-alerts') }}"
+                    class="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-lg shadow-amber-900/20 transition-all active:scale-[0.98]">
+                    Mở rộng bộ lọc
+                </a>
+            </div>
+
+            {{-- Empty (legacy fallback): user has no JobAlert row at all --}}
+            <div id="jobMatchesEmpty" class="hidden text-center py-8">
+                <div class="w-14 h-14 rounded-2xl bg-indigo-50 border-2 border-dashed border-indigo-200 flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-7 h-7 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                </div>
+                <h4 class="text-sm font-bold text-slate-900 mb-1">Chưa có gợi ý việc làm</h4>
+                <p class="text-xs text-slate-500 max-w-xs mx-auto mb-4">Bật Smart Job Matcher để nhận gợi ý việc làm phù hợp mỗi ngày qua email.</p>
+                <a href="{{ route('dashboard.job-alerts') }}"
+                    class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-lg shadow-indigo-900/20 transition-all active:scale-[0.98]">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    Bật Smart Matcher
+                </a>
+            </div>
+
+            <div id="jobMatchesError" class="hidden text-center py-8">
+                <svg class="w-10 h-10 text-slate-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                <p class="text-sm text-slate-500 mb-3">Không thể tải gợi ý việc làm.</p>
+                <button type="button" id="jobMatchesRetry"
+                    class="text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition">
+                    Thử lại
+                </button>
+            </div>
+        </section>
+
         {{-- ══ Completion Hero + Quick Actions ══════════════════ --}}
         <section class="grid lg:grid-cols-5 gap-4">
 
@@ -668,6 +796,140 @@
                 window.location.href = '{{ route("cv.create") }}';
             }
         });
+    })();
+
+    // ── Smart Job Matcher Widget ─────────────────────────────
+    (function () {
+        const listEl       = document.getElementById('jobMatchesList');
+        const emptyEl      = document.getElementById('jobMatchesEmpty');          // legacy fallback
+        const noProfileEl  = document.getElementById('jobMatchesNoProfile');
+        const inactiveEl   = document.getElementById('jobMatchesInactive');
+        const noMatchEl    = document.getElementById('jobMatchesNoMatch');
+        const errorEl      = document.getElementById('jobMatchesError');
+        const retryBtn     = document.getElementById('jobMatchesRetry');
+        const endpoint     = '{{ route('api.job-matches') }}?limit=5';
+
+        const allEmptyEls = [emptyEl, noProfileEl, inactiveEl, noMatchEl].filter(Boolean);
+
+        function showOnly(target) {
+            allEmptyEls.forEach(function (el) { el.classList.add('hidden'); });
+            if (target) target.classList.remove('hidden');
+        }
+
+        function escAttr(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        function scoreColor(score) {
+            if (score >= 80) return 'bg-emerald-500';
+            if (score >= 60) return 'bg-indigo-500';
+            if (score >= 40) return 'bg-amber-500';
+            return 'bg-slate-400';
+        }
+
+        function renderMatch(m) {
+            const logoHtml = m.logo
+                ? '<img src="' + escAttr(m.logo) + '" alt="" class="w-full h-full object-cover" loading="lazy">'
+                : '<svg class="w-6 h-6 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>';
+
+            const meta = [escAttr(m.company || ''), escAttr(m.location || 'Remote'), m.salary ? escAttr(m.salary) : '']
+                .filter(Boolean).join(' · ');
+
+            const badge = '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold text-white ' + scoreColor(m.score) + '">' + (m.score != null ? m.score : 0) + '% match</span>';
+
+            const newTag = m.is_new ? '<span class="text-[9px] font-bold text-rose-500 mt-0.5">MỚI</span>' : '';
+
+            return '<a href="' + escAttr(m.url || '#') + '" target="_blank" rel="noopener" data-job-id="' + escAttr(m.id) + '" class="job-match-item group flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/40 hover:shadow-sm transition-all">' +
+                '<div class="w-12 h-12 rounded-lg bg-slate-100 overflow-hidden flex items-center justify-center shrink-0">' + logoHtml + '</div>' +
+                '<div class="flex-1 min-w-0">' +
+                    '<h4 class="font-bold text-slate-900 text-sm truncate group-hover:text-indigo-700 transition-colors">' + escAttr(m.title || '') + '</h4>' +
+                    '<p class="text-xs text-slate-500 truncate mt-0.5">' + meta + '</p>' +
+                '</div>' +
+                '<div class="shrink-0 flex flex-col items-end gap-0.5">' + badge + newTag + '</div>' +
+            '</a>';
+        }
+
+        async function load() {
+            if (!listEl) return;
+
+            // Reset state
+            listEl.innerHTML = '';
+            listEl.classList.remove('hidden');
+            showOnly(null);
+            errorEl.classList.add('hidden');
+
+            // Show skeleton
+            listEl.innerHTML =
+                '<div class="animate-pulse flex items-center gap-3 p-3 rounded-xl bg-slate-50"><div class="w-12 h-12 rounded-lg bg-slate-200 shrink-0"></div><div class="flex-1 space-y-2"><div class="h-3 w-3/4 bg-slate-200 rounded"></div><div class="h-2 w-1/2 bg-slate-200 rounded"></div></div><div class="w-16 h-6 bg-slate-200 rounded-full"></div></div>' +
+                '<div class="animate-pulse flex items-center gap-3 p-3 rounded-xl bg-slate-50"><div class="w-12 h-12 rounded-lg bg-slate-200 shrink-0"></div><div class="flex-1 space-y-2"><div class="h-3 w-2/3 bg-slate-200 rounded"></div><div class="h-2 w-1/3 bg-slate-200 rounded"></div></div><div class="w-16 h-6 bg-slate-200 rounded-full"></div></div>' +
+                '<div class="animate-pulse flex items-center gap-3 p-3 rounded-xl bg-slate-50"><div class="w-12 h-12 rounded-lg bg-slate-200 shrink-0"></div><div class="flex-1 space-y-2"><div class="h-3 w-1/2 bg-slate-200 rounded"></div><div class="h-2 w-1/4 bg-slate-200 rounded"></div></div><div class="w-16 h-6 bg-slate-200 rounded-full"></div></div>';
+
+            try {
+                const res = await fetch(endpoint, {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin',
+                });
+
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+
+                const data = await res.json();
+                const matches = (data && data.matches) || [];
+                const state   = (data && data.state) || 'ok';
+
+                listEl.innerHTML = '';
+
+                // Dispatch by server-reported state (authoritative)
+                if (matches.length === 0) {
+                    listEl.classList.add('hidden');
+                    switch (state) {
+                        case 'no_profile': showOnly(noProfileEl); break;
+                        case 'inactive':   showOnly(inactiveEl);  break;
+                        case 'no_matches': showOnly(noMatchEl);   break;
+                        case 'no_alert':   showOnly(emptyEl);     break;
+                        default:           showOnly(emptyEl);     break;
+                    }
+                    return;
+                }
+
+                showOnly(null);
+                listEl.classList.remove('hidden');
+
+                const html = matches.map(renderMatch).join('');
+                listEl.innerHTML = html;
+
+                // Mark viewed on click (best-effort)
+                listEl.querySelectorAll('.job-match-item').forEach(function (a) {
+                    a.addEventListener('click', function () {
+                        const id = a.dataset.jobId;
+                        if (!id) return;
+                        fetch('{{ url('api/job-matches') }}/' + id + '/viewed', {
+                            method: 'POST',
+                            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                            credentials: 'same-origin',
+                            keepalive: true,
+                        }).catch(function () {});
+                    });
+                });
+            } catch (err) {
+                listEl.classList.add('hidden');
+                showOnly(null);
+                errorEl.classList.remove('hidden');
+            }
+        }
+
+        if (retryBtn) {
+            retryBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                load();
+            });
+        }
+
+        load();
     })();
     </script>
     @endpush
