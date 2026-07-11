@@ -1,404 +1,586 @@
-# CVactive - Professional CV Builder Platform
+# CVactive
 
-> A modern, full-featured CV (Curriculum Vitae) builder web application built with Laravel 12. Create stunning resumes, export to PDF/PNG, post jobs, and manage applications — all in one platform.
+> Professional CV builder, AI-powered CV scoring, job board, and Smart Job Matcher — built with Laravel 12.
 
-[![Laravel](https://img.shields.io/badge/Laravel-12.0-red?style=flat-square&logo=laravel)](https://laravel.com)
-[![PHP](https://img.shields.io/badge/PHP-8.2+-purple?style=flat-square&logo=php)](https://php.net)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.x-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com)
-[![Alpine.js](https://img.shields.io/badge/Alpine.js-3.x-77D6F5?style=flat-square)](https://alpinejs.dev)
-[![MIT](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
+CVactive is an all-in-one career platform that lets candidates build resumes, HR teams post and score CVs, and recruiters match candidates to jobs through both rule-based and AI-assisted pipelines.
 
----
-
-## 🎯 Overview
-
-**CVactive** is a comprehensive online CV builder platform designed for the Vietnamese job market. It empowers job seekers to create professional resumes with live preview, multiple templates, and easy sharing — while also providing employers with a job posting and applicant tracking system.
-
-The platform supports subscription-based premium plans with payment integration via VNPay and MoMo.
+[![Laravel](https://img.shields.io/badge/Laravel-12.x-red?logo=laravel)](https://laravel.com)
+[![PHP](https://img.shields.io/badge/PHP-8.2%2B-777BB4?logo=php)](https://php.net)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Maintenance](https://img.shields.io/badge/maintained-yes-brightgreen)](#)
 
 ---
 
-## ✨ Key Features
+## Table of Contents
 
-### For Job Seekers (Candidates)
-
-| Feature | Description |
-|---------|-------------|
-| **Live CV Editor** | Real-time preview while editing — see changes instantly |
-| **50+ CV Templates** | Professional templates categorized by industry and style |
-| **PDF Export** | High-quality PDF generation using DOMPDF |
-| **PNG Export** | Image export for quick sharing |
-| **Online Sharing** | Generate secure shareable links for your CV |
-| **Multi-CV Management** | Create and manage multiple CV versions |
-| **Auto-Save** | Data is automatically saved as you type |
-| **Drag & Drop Sections** | Rearrange CV sections with drag and drop |
-| **Customizable Themes** | Change colors, fonts, and layouts |
-| **Skill Matching** | Keyword highlighting in CV for job applications |
-| **Job Applications** | Track application history and status |
-
-### For Employers (HR)
-
-| Feature | Description |
-|---------|-------------|
-| **Job Posting** | Post unlimited job listings with detailed descriptions |
-| **Application Management** | View, review, and manage all applicants |
-| **CV Search** | Search CVs by skills, experience, and keywords |
-| **PDF CV Download** | Secure, authorization-protected CV downloads |
-| **Application Status** | Track applications through pending → approved/rejected |
-| **Company Branding** | Custom company logo and branding per job post |
-| **Role-Based Access** | Strict ownership model — HR only sees their own posts |
-
-### Platform Features
-
-| Feature | Description |
-|---------|-------------|
-| **Subscription Plans** | Free and Pro tiers with VNPay/MoMo payment integration |
-| **User Roles** | User, HR, and Admin roles with middleware protection |
-| **Blog System** | Admin-managed blog for career tips and news |
-| **FAQ Management** | Admin-managed FAQ for user support |
-| **Contact Form** | Public contact form with email notifications |
-| **Email Verification** | Laravel Breeze authentication with verified emails |
-| **Google OAuth** | Socialite-based Google login integration |
-| **Security** | Private file storage, policy-based authorization, CV access logging |
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Quick Start](#quick-start)
+- [Configuration](#configuration)
+- [Database Setup](#database-setup)
+- [Running the App](#running-the-app)
+- [Scheduled Jobs](#scheduled-jobs)
+- [Project Structure](#project-structure)
+- [Smart Job Matcher](#smart-job-matcher)
+- [AI CV Scoring](#ai-cv-scoring)
+- [Payment Integration](#payment-integration)
+- [Deployment Notes](#deployment-notes)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
-## 🛠️ Tech Stack
+## Features
 
-### Backend
+### For Candidates
+- **CV Builder** with multiple professional templates
+- Export to **PDF** (DOMPDF + mPDF) and **PNG**
+- **Google OAuth** sign-in (Laravel Socialite)
+- **Two-Factor Authentication** (2FA)
+- **Smart Job Matcher** — receive daily/weekly/instant job recommendations via email
+- **CV upload** with AI-extracted skill profiles
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Laravel** | 12.x | PHP Framework |
-| **PHP** | 8.2+ | Server-side language |
-| **MySQL/SQLite** | - | Primary database |
-| **DOMPDF** | 3.x | Server-side PDF generation |
-| **mPDF** | 8.x | Alternative PDF library |
-| **PdfParser** | 2.x | PDF text extraction |
-| **Intervention Image** | 3.x | Image manipulation |
-| **Laravel Socialite** | 5.x | Google OAuth |
-| **Laravel Breeze** | 2.x | Authentication scaffolding |
+### For HR / Recruiters
+- **Job post management** (create, edit, publish, archive)
+- **AI CV Scoring** — automatic scoring of submitted CVs against job requirements
+- **Candidate dashboard** with filtering, shortlist, status tracking
+- **VNPay payment** integration for premium job posts
 
-### Frontend
+### For Administrators
+- **Admin dashboard** with content management
+- **Blog** with categories and tags
+- **FAQ** management
+- **Plan / Pricing** management
+- **Contact submissions** inbox
+- **Template gallery** management for CV themes
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Tailwind CSS** | 3.x | Utility-first CSS framework |
-| **Alpine.js** | 3.x | Reactive JavaScript framework |
-| **Vite** | 7.x | Build tool and dev server |
-| **Axios** | 1.x | HTTP client |
-| **Figtree** | - | Google Font (primary typeface) |
-
-### Development Tools
-
-| Tool | Purpose |
-|------|---------|
-| **Composer** | PHP dependency management |
-| **npm** | Node.js package management |
-| **Pint** | Laravel code style fixer |
-| **PHPUnit** | Unit testing framework |
-| **Artisan** | Laravel CLI |
+### Platform-wide
+- Multi-section Blade templates + Vite-compiled assets
+- Queue-backed background jobs (database driver)
+- File-based sessions, optional Redis/Memcached cache
+- Security headers middleware
+- Bcrypt password hashing (12 rounds)
 
 ---
 
-## 📁 Project Structure
+## Tech Stack
 
-```
-CVactive_ST5/
-├── app/
-│   ├── Http/
-│   │   ├── Controllers/          # Application controllers
-│   │   │   ├── Admin/           # Admin panel (Dashboard, Blog, Payments, Templates, Users)
-│   │   │   ├── Auth/            # Authentication (Login, Register, Google OAuth, Password Reset)
-│   │   │   ├── BlogController.php
-│   │   │   ├── ContactController.php
-│   │   │   ├── CvController.php  # CV CRUD, editor, export
-│   │   │   ├── JobApplicationController.php
-│   │   │   ├── JobPostController.php
-│   │   │   ├── PaymentController.php
-│   │   │   └── TemplateController.php
-│   │   ├── Middleware/
-│   │   │   ├── AdminMiddleware.php
-│   │   │   └── HRMiddleware.php
-│   │   └── Requests/             # Form request validators
-│   ├── Models/                   # 15+ Eloquent models
-│   │   ├── User.php
-│   │   ├── Cv.php, CvSection.php, CvSectionItem.php
-│   │   ├── Template.php, TemplateCategory.php
-│   │   ├── JobPost.php, JobApplication.php
-│   │   ├── Payment.php, Plan.php
-│   │   ├── BlogPost.php, BlogCategory.php
-│   │   ├── Faq.php, Contact.php
-│   │   └── CvShare.php
-│   ├── Policies/                 # Authorization policies
-│   │   ├── ApplicationPolicy.php
-│   │   ├── CvPolicy.php
-│   │   ├── JobPostPolicy.php
-│   │   └── PaymentPolicy.php
-│   ├── Providers/
-│   │   └── AppServiceProvider.php
-│   └── Services/                 # Business logic services
-│       ├── MoMoService.php       # MoMo payment gateway
-│       ├── PdfTextExtractor.php  # PDF text extraction
-│       └── VNPayService.php      # VNPay payment gateway
-├── config/                       # Laravel configuration files
-│   ├── app.php, auth.php, database.php
-│   ├── filesystems.php, logging.php, session.php
-│   ├── vnpay.php                # VNPay configuration
-│   └── momo.php                 # MoMo configuration
-├── database/
-│   ├── factories/               # Model factories for testing
-│   ├── migrations/              # 18 migration files
-│   └── seeders/                 # Database seeders
-├── resources/
-│   ├── css/app.css             # Tailwind CSS entry point
-│   ├── js/
-│   │   ├── app.js              # Alpine.js initialization
-│   │   └── bootstrap.js         # Axios setup
-│   └── views/
-│       ├── admin/               # Admin panel views
-│       ├── auth/                # Login, register, password reset
-│       ├── blog/                # Public blog views
-│       ├── components/          # Reusable Blade components
-│       ├── cv/                  # CV editor views
-│       ├── cv-templates/        # CV template designs (Blade)
-│       ├── hr/                  # HR panel views
-│       ├── layouts/             # Layout templates
-│       ├── payment/             # Payment views
-│       └── cv-templates/        # 3 built-in CV templates
-├── routes/
-│   ├── web.php                  # Web routes (all application routes)
-│   └── auth.php                 # Auth routes (Breeze)
-├── tests/                        # PHPUnit tests
-│   ├── Feature/Auth/
-│   └── Unit/
-├── config/                      # Configuration files
-├── storage/app/private/         # Private file storage (CV uploads)
-└── public/                      # Public assets
-```
+| Layer | Technology |
+|---|---|
+| **Framework** | Laravel 12.x |
+| **Language** | PHP 8.2+ |
+| **Database** | MySQL (default) / SQLite supported |
+| **Frontend** | Blade + Tailwind CSS 3 + Alpine.js |
+| **Build tool** | Vite 7 |
+| **PDF generation** | DOMPDF, mPDF |
+| **PDF parsing** | Smalot/PdfParser |
+| **Image processing** | Intervention/Image |
+| **Authentication** | Laravel Breeze + Socialite (Google) |
+| **AI / LLM** | OpenAI GPT-4o-mini (configurable) |
+| **Payment** | VNPay sandbox/production |
+| **Queue** | Database driver (default) |
+| **Cache** | Database / File / Redis / Memcached |
 
 ---
 
-## 🔐 Security Features
-
-- **Private File Storage**: CV files stored in `storage/app/private/` — not publicly accessible
-- **Authorization Policies**: Laravel Gates and Policies for role-based access control
-- **Ownership Verification**: HR can only access CVs from their own job postings
-- **Secure Downloads**: All CV downloads go through authorization-gated controllers
-- **CV Access Logging**: Every CV download attempt is logged to `storage/logs/cv-access.log`
-- **Mass Assignment Protection**: All models use `$fillable` for input validation
-- **File Upload Validation**: MIME type and size validation for all uploads
-- **Filename Sanitization**: Path traversal prevention with unique random filenames
-- **CSRF Protection**: Laravel's built-in CSRF token protection on all forms
-- **Email Verification**: Required email verification before accessing sensitive features
-- **Middleware Protection**: Authenticated, verified, admin, and HR middleware on all sensitive routes
-
----
-
-## 🚀 Getting Started
+## Quick Start
 
 ### Prerequisites
 
-- **PHP** 8.2 or higher
-- **Composer** 2.x
-- **Node.js** 18+ and **npm**
-- **MySQL** 8.0+ or **SQLite** (for local development)
+- PHP **8.2** or higher
+- Composer 2.x
+- Node.js 18+ and npm
+- MySQL 8.0+ (or SQLite 3)
+- Git
 
-### Installation
+### 1. Clone the repository
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/yourusername/cvactive.git
+git clone https://github.com/<your-org>/cvactive.git
 cd cvactive
+```
 
-# 2. Install PHP dependencies
+### 2. Install PHP dependencies
+
+```bash
 composer install
+```
 
-# 3. Create environment file
-cp .env.example .env
+### 3. Install Node dependencies
 
-# 4. Generate application key
-php artisan key:generate
-
-# 5. Run database migrations
-php artisan migrate
-
-# 6. Install frontend dependencies
+```bash
 npm install
+```
 
-# 7. Build frontend assets
-npm run build
+### 4. Configure environment
 
-# 8. (Optional) Seed the database
+```bash
+cp .env.example .env
+php artisan key:generate
+```
+
+Edit `.env` and fill in your database credentials, mail settings, OAuth keys, and OpenAI key. See [Configuration](#configuration) below.
+
+### 5. Run migrations
+
+```bash
+php artisan migrate
+```
+
+### 6. Seed the database (optional)
+
+```bash
 php artisan db:seed
+```
 
-# 9. Start the development server
+### 7. Build frontend assets
+
+```bash
+npm run build      # production
+# or
+npm run dev        # watch mode
+```
+
+### 8. Start the dev server
+
+```bash
 php artisan serve
 ```
 
-### Quick Setup Script
+Visit **http://127.0.0.1:8000**.
+
+---
+
+## Configuration
+
+All runtime configuration lives in `.env`. **Never commit this file** — `.gitignore` already excludes it. Use `.env.example` as a template.
+
+### Required variables
+
+| Variable | Purpose |
+|---|---|
+| `APP_KEY` | Laravel encryption key (generate with `php artisan key:generate`) |
+| `APP_URL` | Public base URL (e.g. `https://cvactive.com`) |
+| `DB_*` | Database connection (host, port, name, user, password) |
+| `MAIL_*` | SMTP credentials for transactional emails |
+| `OPENAI_API_KEY` | Powers AI CV scoring and Smart Job Matcher |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth sign-in |
+
+### Optional variables
+
+| Variable | Purpose |
+|---|---|
+| `VNPAY_*` / `VNP_*` | VNPay payment gateway credentials |
+| `AWS_*` | S3-compatible storage (used for uploaded CVs at scale) |
+| `REDIS_*` | Redis cache/queue driver |
+| `MEMCACHED_HOST` | Memcached cache driver |
+| `QUEUE_CONNECTION` | `sync` for dev, `database` / `redis` for production |
+
+### Generating secrets
 
 ```bash
-# Run the automated setup script
-composer setup
+php artisan key:generate            # APP_KEY
+php artisan jwt:secret              # if JWT is installed
 ```
 
-### Development
+### Gmail SMTP setup (development)
 
-```bash
-# Start all development servers concurrently
-composer dev
-
-# Run tests
-composer test
-
-# Format code with Pint
-./vendor/bin/pint
-```
-
----
-
-## 📊 Database Schema
-
-### Core Entities
-
-```
-users ─────────────┬── plans (subscription)
-  │               │
-  ├── cvs ────────┤── cv_sections ── cv_section_items
-  │               │
-  ├── job_posts ──┤── job_applications
-  │               │
-  └── blog_posts ─┴── blog_categories
-
-payments ─────────┬── users (payment history)
-                   │
-                   └── plans
-
-contacts (public submissions)
-faqs (admin managed)
-```
-
-### Key Tables
-
-| Table | Description |
-|-------|-------------|
-| `users` | User accounts with roles (user/hr/admin), subscription info |
-| `cvs` | CV documents with template, theme, and visibility settings |
-| `cv_sections` | Modular CV sections (experience, education, skills, etc.) |
-| `cv_section_items` | Individual items within sections |
-| `templates` | CV template designs with categories |
-| `job_posts` | Job listings owned by HR users |
-| `job_applications` | Applications with secure CV file storage |
-| `payments` | Payment transactions (VNPay/MoMo) |
-| `plans` | Subscription plans with features and limits |
-| `blog_posts` | Blog articles with categories |
-| `cv_shares` | Secure shareable CV links |
-
----
-
-## 🎨 CV Templates
-
-The platform includes 3 professionally designed CV templates:
-
-| Template | Style | Best For |
-|----------|-------|----------|
-| **Classic Blue** | Traditional, professional | Corporate, banking, finance |
-| **Modern Dark** | Contemporary, bold | Tech, design, creative |
-| **Minimal White** | Clean, minimal | All industries, fresh graduates |
-
-Templates are built with Blade views in `resources/views/cv-templates/` for full customization.
-
----
-
-## 💳 Payment Integration
-
-| Gateway | Status | Features |
-|---------|--------|----------|
-| **VNPay** | ✅ Integrated | QR code, ATM card, Internet Banking |
-| **MoMo** | ✅ Integrated | QR code payment |
-| **Bank Transfer** | ✅ Supported | Manual bank transfer with confirmation |
-
----
-
-## 👥 User Roles
-
-| Role | Permissions |
-|------|------------|
-| **User** | Create CVs, apply to jobs, manage own applications |
-| **HR** | All User permissions + post jobs, view applications, download CVs |
-| **Admin** | Full access: manage users, templates, blog, payments, settings |
-
----
-
-## 🧪 Testing
-
-```bash
-# Run all tests
-php artisan test
-
-# Run with coverage
-php artisan test --coverage
-
-# Run specific test suite
-php artisan test --testsuite=Feature
-```
-
----
-
-## 📝 Environment Variables
-
-Copy `.env.example` to `.env` and configure:
+1. Enable 2-Step Verification on the Google account
+2. Visit https://myaccount.google.com/apppasswords
+3. Create an App Password for "Mail / Other (CVactive)"
+4. Set `MAIL_USERNAME` and `MAIL_PASSWORD` in `.env`
 
 ```env
-APP_NAME=CVactive
-APP_ENV=local
-APP_DEBUG=true
-APP_URL=http://localhost:8000
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=your-16-char-app-password
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS="your-email@gmail.com"
+MAIL_FROM_NAME="${APP_NAME}"
+```
 
+---
+
+## Database Setup
+
+### MySQL (recommended)
+
+```bash
+mysql -u root -p -e "CREATE DATABASE cvactive CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+```
+
+```env
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=cvactive
 DB_USERNAME=root
-DB_PASSWORD=
+DB_PASSWORD=your_password
+```
 
-# Payment Gateways
-VNPAY_URL=https://sandbox.vnpayment.vn
-VNPAY_TMNCODE=YOUR_TMNCODE
-VNPAY_HASH_SECRET=YOUR_HASH_SECRET
+### SQLite (quick local dev)
 
-MOMO_ENDPOINT=https://test-payment.momo.vn
-MOMO_PARTNER_CODE=YOUR_PARTNER_CODE
-MOMO_ACCESS_KEY=YOUR_ACCESS_KEY
-MOMO_SECRET_KEY=YOUR_SECRET_KEY
+```bash
+touch database/database.sqlite
+```
 
-# Google OAuth
-GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=your-client-secret
+```env
+DB_CONNECTION=sqlite
+DB_DATABASE=/absolute/path/to/database/database.sqlite
+```
 
-# File Storage
-FILESYSTEM_DISK=local
+### Run migrations + seeders
+
+```bash
+php artisan migrate --seed
 ```
 
 ---
 
-## 📄 License
+## Running the App
 
-This project is open-sourced software licensed under the [MIT license](LICENSE).
+### Development (built-in PHP server)
+
+```bash
+php artisan serve
+# Visit http://127.0.0.1:8000
+```
+
+### Development with queue worker (recommended for Smart Job Matcher)
+
+Open two terminals:
+
+```bash
+# Terminal 1 — web server
+php artisan serve
+
+# Terminal 2 — queue worker
+php artisan queue:work
+
+# Terminal 3 — asset watcher (optional)
+npm run dev
+```
+
+### Production (Nginx + PHP-FPM)
+
+Sample Nginx server block:
+
+```nginx
+server {
+    listen 80;
+    server_name cvactive.com;
+    root /var/www/cvactive/public;
+
+    index index.php;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+        fastcgi_index index.php;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
+```
 
 ---
 
-## 🙏 Acknowledgments
+## Scheduled Jobs
 
-- [Laravel](https://laravel.com) — The PHP framework
-- [Tailwind CSS](https://tailwindcss.com) — Utility-first CSS
-- [Alpine.js](https://alpinejs.dev) — Lightweight JavaScript framework
-- [Heroicons](https://heroicons.com) — Beautiful SVG icons
-- [Unsplash](https://unsplash.com) — Stock photography
+CVactive uses Laravel's scheduler for daily job-match emails. The schedule is registered in `routes/console.php`.
+
+### Local development
+
+```bash
+php artisan schedule:work
+```
+
+This runs the scheduler in the foreground and triggers every-minute checks. Useful for testing.
+
+### Production (Linux cron)
+
+Add a single cron entry:
+
+```cron
+* * * * * cd /var/www/cvactive && php artisan schedule:run >> /dev/null 2>&1
+```
+
+### Production (Windows Task Scheduler)
+
+Create a task that runs every minute:
+
+```
+Program: C:\php\php.exe
+Arguments: artisan schedule:run
+Working directory: C:\inetpub\cvactive
+```
+
+### Inspect the schedule
+
+```bash
+php artisan schedule:list
+```
 
 ---
 
-<p align="center">
-  <strong>Built with ❤️ using Laravel</strong>
-</p>
+## Project Structure
+
+```
+cvactive/
+├── app/
+│   ├── Console/             # Artisan commands
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   │   ├── Admin/       # Admin dashboard controllers
+│   │   │   ├── Api/         # JSON API endpoints
+│   │   │   ├── Auth/        # Login / register / OAuth callbacks
+│   │   │   ├── Hr/          # HR job-post management
+│   │   │   └── JobAlertController.php  # Smart Job Matcher UI
+│   │   └── Middleware/      # SecurityHeaders, etc.
+│   ├── Jobs/
+│   │   ├── ExtractCvTextJob.php
+│   │   └── SendDailyJobAlerts.php    # Daily matcher dispatch
+│   ├── Models/              # Eloquent models (User, JobAlert, JobPost, ...)
+│   ├── Notifications/
+│   │   └── JobMatchAlert.php         # Email template
+│   ├── Providers/
+│   └── Services/
+│       ├── CvScoring/       # AI CV scoring pipeline
+│       └── JobMatching/     # Smart Job Matcher (Rule + AI)
+├── bootstrap/
+├── config/
+├── database/
+│   ├── factories/
+│   ├── migrations/          # 38+ migrations
+│   └── seeders/
+├── public/                  # Web root (Vite assets compiled here)
+├── resources/
+│   ├── css/
+│   ├── js/
+│   └── views/               # Blade templates
+├── routes/
+│   ├── console.php          # Scheduled tasks
+│   └── web.php              # Web routes
+├── storage/
+└── tests/
+```
+
+---
+
+## Smart Job Matcher
+
+The Smart Job Matcher is CVactive's core differentiator. It sends users personalized job recommendations based on their skill profile and CV content.
+
+### Pipeline
+
+1. **Profile extraction** — `SkillExtractor` parses the user's CV and stored skill profile to derive keyword + skill vectors.
+2. **Rule-based scoring** — `RuleBasedMatcher` produces a baseline score using keyword overlap, location, salary range, and recency.
+3. **AI-assisted scoring** — `AiMatcher` (OpenAI GPT-4o-mini) re-ranks the top candidates using semantic understanding of job descriptions and CVs.
+4. **Top-N selection** — `JobMatcherService::matchForAlert()` returns the highest-scoring matches (typically 3–10).
+5. **Delivery** — `JobMatchAlert` notification emails the candidate; `JobMatchLog` records the dispatch.
+
+### Tuning frequency
+
+User alerts support three cadences:
+
+| Frequency | Trigger |
+|---|---|
+| `instant` | Run when user logs in (within last 24 h) |
+| `daily` | Run by scheduled job at 08:00 |
+| `weekly` | Run by scheduled job on Mondays |
+
+### Manual trigger
+
+To send alerts immediately (e.g. for testing):
+
+```bash
+php artisan tinker
+>>> App\Jobs\SendDailyJobAlerts::dispatch();
+```
+
+Or fire the job directly:
+
+```bash
+php artisan tinker
+>>> $alert = App\Models\JobAlert::find(1);
+>>> app(App\Services\JobMatching\JobMatcherService::class)->matchForAlert($alert);
+```
+
+---
+
+## AI CV Scoring
+
+When a candidate uploads a CV for a job post, `app/Services/CvScoring/AiScorer.php` runs a multi-step pipeline:
+
+1. Parse PDF/DOCX → text
+2. Extract skills, experience, education
+3. Score against the job post's required skills + experience level
+4. Persist score + reasoning to the database
+5. Display score in the HR dashboard
+
+### Required OpenAI key
+
+```env
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4o-mini   # default, override to gpt-4o for higher accuracy
+OPENAI_TIMEOUT=15
+```
+
+### Cost control
+
+CV scoring is rate-limited per user via the `ai_cv_score` cache key. Default cache TTL is 1 hour. To disable caching during testing:
+
+```env
+CACHE_STORE=array
+```
+
+---
+
+## Payment Integration
+
+CVactive integrates with **VNPay** for premium job-post purchases.
+
+### Sandbox setup
+
+```env
+VNPAY_TMN_CODE=your_sandbox_tmn_code
+VNPAY_HASH_SECRET=your_sandbox_hash_secret
+VNPAY_URL=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+VNPAY_RETURN_URL="${APP_URL}/payment/vnpay/return"
+```
+
+Test cards are documented at https://sandbox.vnpayment.vn.
+
+---
+
+## Deployment Notes
+
+### Pre-deployment checklist
+
+- [ ] `APP_ENV=production`
+- [ ] `APP_DEBUG=false`
+- [ ] `APP_URL` points to your domain
+- [ ] `php artisan config:cache`
+- [ ] `php artisan route:cache`
+- [ ] `php artisan view:cache`
+- [ ] `npm run build` (compiled assets in `public/build/`)
+- [ ] Storage symlink: `php artisan storage:link`
+- [ ] Queue worker running (supervisor / systemd)
+- [ ] Scheduler cron entry installed
+- [ ] `chmod -R 775 storage bootstrap/cache` + correct ownership
+
+### Recommended production stack
+
+- **Web server**: Nginx 1.24+ with PHP-FPM
+- **PHP**: 8.2 with OPcache enabled
+- **Database**: MySQL 8.0 with daily backups
+- **Queue**: Supervisor-managed `php artisan queue:work`
+- **Cache**: Redis 7
+- **SSL**: Let's Encrypt via Certbot
+
+### Queue worker (Supervisor)
+
+`/etc/supervisor/conf.d/cvactive-worker.conf`:
+
+```ini
+[program:cvactive-worker]
+process_name=%(program_name)s_%(process_num)02d
+command=php /var/www/cvactive/artisan queue:work database --sleep=3 --tries=3 --max-time=3600
+autostart=true
+autorestart=true
+numprocs=2
+redirect_stderr=true
+stdout_logfile=/var/www/cvactive/storage/logs/worker.log
+stopwaitsecs=3600
+```
+
+```bash
+sudo supervisorctl reread
+sudo supervisorctl update
+sudo supervisorctl start cvactive-worker:*
+```
+
+---
+
+## Troubleshooting
+
+### "SQLSTATE[HY000] [2002] No connection could be made"
+
+Database is unreachable. Check `DB_HOST`, `DB_PORT`, and that MySQL is running.
+
+```bash
+# macOS / Linux
+sudo systemctl status mysql
+
+# Windows
+net start MySQL80
+```
+
+### Mail fails with "Authentication failed"
+
+For Gmail, ensure you're using an **App Password**, not your account password. See [Gmail SMTP setup](#gmail-smtp-setup-development).
+
+### Frontend assets are missing
+
+Run `npm run build` (or `npm run dev` in another terminal).
+
+### OpenAI returns 429 Too Many Requests
+
+You exceeded the rate limit. Lower `OPENAI_TIMEOUT` retries aren't auto-handled — consider throttling CV scoring:
+
+```php
+// In AiScorer::score()
+usleep(200_000); // 200ms throttle per request
+```
+
+### Schedule never fires
+
+Check the cron entry:
+
+```bash
+crontab -l | grep cvactive
+```
+
+For local dev, use `php artisan schedule:work` instead of cron.
+
+---
+
+## Contributing
+
+Contributions are welcome. Please:
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feat/your-feature`
+3. Follow PSR-12 coding standards
+4. Run `composer test` before pushing
+5. Submit a pull request describing the change
+
+For major changes, open an issue first to discuss the approach.
+
+---
+
+## Security
+
+If you discover a security vulnerability, please email the maintainers directly instead of opening a public issue.
+
+---
+
+## License
+
+MIT License. See [LICENSE](LICENSE) for details.
+
+---
+
+## Credits
+
+Built by the CVactive team. Powered by [Laravel](https://laravel.com), [Tailwind CSS](https://tailwindcss.com), and [OpenAI](https://openai.com).
